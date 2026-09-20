@@ -1,0 +1,315 @@
+build table-format=Pebble,v6
+a@2#1,SET:blob{fileNum=1 valueID=0 valueLen=10}attr=7
+b@5#7,SET:blob{fileNum=1 valueID=200 valueLen=200}attr=7
+b@4#3,DEL:
+b@3#2,SET:blob{fileNum=2 valueID=300 valueLen=200}attr=7
+b@2#1,SET:blob{fileNum=2 valueID=400 valueLen=103}attr=7
+----
+blob-separated-values: num-values 4
+
+layout
+----
+sstable
+ ├── data  offset: 0  length: 162
+ │    ├── data block header
+ │    │    ├── columnar block header
+ │    │    │    ├── 000-004: x 03000000 # maximum key length: 3
+ │    │    │    ├── 004-005: x 01       # version 1
+ │    │    │    ├── 005-007: x 0700     # 7 columns
+ │    │    │    ├── 007-011: x 05000000 # 5 rows
+ │    │    │    ├── 011-012: b 00000100 # col 0: prefixbytes
+ │    │    │    ├── 012-016: x 2e000000 # col 0: page start 46
+ │    │    │    ├── 016-017: b 00000011 # col 1: bytes
+ │    │    │    ├── 017-021: x 39000000 # col 1: page start 57
+ │    │    │    ├── 021-022: b 00000010 # col 2: uint
+ │    │    │    ├── 022-026: x 4a000000 # col 2: page start 74
+ │    │    │    ├── 026-027: b 00000001 # col 3: bool
+ │    │    │    ├── 027-031: x 56000000 # col 3: page start 86
+ │    │    │    ├── 031-032: b 00000011 # col 4: bytes
+ │    │    │    ├── 032-036: x 68000000 # col 4: page start 104
+ │    │    │    ├── 036-037: b 00000001 # col 5: bool
+ │    │    │    ├── 037-041: x 88000000 # col 5: page start 136
+ │    │    │    ├── 041-042: b 00000001 # col 6: bool
+ │    │    │    └── 042-046: x a0000000 # col 6: page start 160
+ │    │    ├── data for column 0 (prefixbytes)
+ │    │    │    ├── 046-047: x 04 # bundle size: 16
+ │    │    │    ├── offsets table
+ │    │    │    │    ├── 047-048: x 01 # encoding: 1b
+ │    │    │    │    ├── 048-049: x 00 # data[0] = 0 [55 overall]
+ │    │    │    │    ├── 049-050: x 00 # data[1] = 0 [55 overall]
+ │    │    │    │    ├── 050-051: x 01 # data[2] = 1 [56 overall]
+ │    │    │    │    ├── 051-052: x 02 # data[3] = 2 [57 overall]
+ │    │    │    │    ├── 052-053: x 02 # data[4] = 2 [57 overall]
+ │    │    │    │    ├── 053-054: x 02 # data[5] = 2 [57 overall]
+ │    │    │    │    └── 054-055: x 02 # data[6] = 2 [57 overall]
+ │    │    │    └── data
+ │    │    │         ├── 055-055: x    # data[00]:  (block prefix)
+ │    │    │         ├── 055-055: x    # data[01]:  (bundle prefix)
+ │    │    │         ├── 055-056: x 61 # data[02]: a
+ │    │    │         ├── 056-057: x 62 # data[03]: b
+ │    │    │         ├── 057-057: x    # data[04]: .
+ │    │    │         ├── 057-057: x    # data[05]: .
+ │    │    │         └── 057-057: x    # data[06]: .
+ │    │    ├── data for column 1 (bytes)
+ │    │    │    ├── offsets table
+ │    │    │    │    ├── 057-058: x 01 # encoding: 1b
+ │    │    │    │    ├── 058-059: x 00 # data[0] = 0 [64 overall]
+ │    │    │    │    ├── 059-060: x 02 # data[1] = 2 [66 overall]
+ │    │    │    │    ├── 060-061: x 04 # data[2] = 4 [68 overall]
+ │    │    │    │    ├── 061-062: x 06 # data[3] = 6 [70 overall]
+ │    │    │    │    ├── 062-063: x 08 # data[4] = 8 [72 overall]
+ │    │    │    │    └── 063-064: x 0a # data[5] = 10 [74 overall]
+ │    │    │    └── data
+ │    │    │         ├── 064-066: x 4032 # data[0]: @2
+ │    │    │         ├── 066-068: x 4035 # data[1]: @5
+ │    │    │         ├── 068-070: x 4034 # data[2]: @4
+ │    │    │         ├── 070-072: x 4033 # data[3]: @3
+ │    │    │         └── 072-074: x 4032 # data[4]: @2
+ │    │    ├── data for column 2 (uint)
+ │    │    │    ├── 074-075: x 02   # encoding: 2b
+ │    │    │    ├── 075-076: x 00   # padding (aligning to 16-bit boundary)
+ │    │    │    ├── 076-078: x 0101 # data[0] = 257
+ │    │    │    ├── 078-080: x 0107 # data[1] = 1793
+ │    │    │    ├── 080-082: x 0003 # data[2] = 768
+ │    │    │    ├── 082-084: x 0102 # data[3] = 513
+ │    │    │    └── 084-086: x 0101 # data[4] = 257
+ │    │    ├── data for column 3 (bool)
+ │    │    │    ├── 086-087: x 00                                                               # default bitmap encoding
+ │    │    │    ├── 087-088: x 00                                                               # padding to align to 64-bit boundary
+ │    │    │    ├── 088-096: b 0000001100000000000000000000000000000000000000000000000000000000 # bitmap word 0
+ │    │    │    └── 096-104: b 0000000100000000000000000000000000000000000000000000000000000000 # bitmap summary word 0-63
+ │    │    ├── data for column 4 (bytes)
+ │    │    │    ├── offsets table
+ │    │    │    │    ├── 104-105: x 01 # encoding: 1b
+ │    │    │    │    ├── 105-106: x 00 # data[0] = 0 [111 overall]
+ │    │    │    │    ├── 106-107: x 05 # data[1] = 5 [116 overall]
+ │    │    │    │    ├── 107-108: x 0c # data[2] = 12 [123 overall]
+ │    │    │    │    ├── 108-109: x 0c # data[3] = 12 [123 overall]
+ │    │    │    │    ├── 109-110: x 13 # data[4] = 19 [130 overall]
+ │    │    │    │    └── 110-111: x 19 # data[5] = 25 [136 overall]
+ │    │    │    └── data
+ │    │    │         ├── 111-116: x 47000a0000     # data[0]: "G\x00\n\x00\x00"
+ │    │    │         ├── 116-123: x 4700c80100c801 # data[1]: "G\x00\xc8\x01\x00\xc8\x01"
+ │    │    │         ├── 123-123: x                # data[2]:
+ │    │    │         ├── 123-130: x 6701c80100ac02 # data[3]: "g\x01\xc8\x01\x00\xac\x02"
+ │    │    │         └── 130-136: x 670167009003   # data[4]: "g\x01g\x00\x90\x03"
+ │    │    ├── data for column 5 (bool)
+ │    │    │    ├── 136-137: x 00                                                               # default bitmap encoding
+ │    │    │    ├── 137-144: x 00000000000000                                                   # padding to align to 64-bit boundary
+ │    │    │    ├── 144-152: b 0001101100000000000000000000000000000000000000000000000000000000 # bitmap word 0
+ │    │    │    └── 152-160: b 0000000100000000000000000000000000000000000000000000000000000000 # bitmap summary word 0-63
+ │    │    ├── data for column 6 (bool)
+ │    │    │    └── 160-161: x 01 # zero bitmap encoding
+ │    │    └── 161-162: x 00 # block padding byte
+ │    ├── a@2#1,SET:blob handle (f0,blk0,id0,len10)
+ │    ├── b@5#7,SET:blob handle (f0,blk0,id200,len200)
+ │    ├── b@4#3,DEL:
+ │    ├── b@3#2,SET:blob handle (f1,blk0,id300,len200)
+ │    ├── b@2#1,SET:blob handle (f1,blk0,id400,len103)
+ │    └── trailer [compression=none checksum=0xeab31f03]
+ ├── index  offset: 167  length: 36
+ │    ├── 00000    block:0/162
+ │    │   
+ │    └── trailer [compression=none checksum=0x5dbaf42d]
+ ├── blob-reference-index  offset: 208  length: 35
+ │    ├── 00000 (8)
+ │    │    └── block: 0, values size: 210, bitmap size: 4 byte(s), bitmap: [00000001 00000000 00011000 00000001]
+ │    ├── 00008 (10)
+ │    │    └── block: 0, values size: 303, bitmap size: 6 byte(s), bitmap: [00000000 00100101 00010000 00000000 00001100 00000001]
+ │    └── trailer [compression=none checksum=0xed355aac]
+ ├── properties  offset: 248  length: 490
+ │    ├── 00000    obsolete-key (16) [restart]
+ │    ├── 00016    pebble.colblk.schema (68)
+ │    ├── 00084    pebble.compression_stats (26)
+ │    ├── 00110    pebble.num.values.in.blob-files (28)
+ │    ├── 00138    pebble.raw.point-tombstone.key.size (32)
+ │    ├── 00170    rocksdb.block.based.table.index.type (43)
+ │    ├── 00213    rocksdb.comparator (37)
+ │    ├── 00250    rocksdb.compression (16)
+ │    ├── 00266    rocksdb.data.size (14)
+ │    ├── 00280    rocksdb.deleted.keys (15)
+ │    ├── 00295    rocksdb.filter.size (15)
+ │    ├── 00310    rocksdb.index.size (14)
+ │    ├── 00324    rocksdb.merge.operands (18)
+ │    ├── 00342    rocksdb.merge.operator (24)
+ │    ├── 00366    rocksdb.num.data.blocks (19)
+ │    ├── 00385    rocksdb.num.entries (11)
+ │    ├── 00396    rocksdb.num.range-deletions (19)
+ │    ├── 00415    rocksdb.property.collectors (36)
+ │    ├── 00451    rocksdb.raw.key.size (16)
+ │    ├── 00467    rocksdb.raw.value.size (15)
+ │    ├── restart points
+ │    │    └── 00482 [restart 0]
+ │    └── trailer [compression=none checksum=0x93425091]
+ ├── meta-index  offset: 743  length: 72
+ │    ├── 0000    pebble.blob_ref_index block:208/35
+ │    │   
+ │    ├── 0001    rocksdb.properties block:248/490
+ │    │   
+ │    └── trailer [compression=none checksum=0x837b2569]
+ └── footer  offset: 820  length: 57
+      ├── 000  checksum type: crc32c
+      ├── 001  meta: offset=743, length=72
+      ├── 004  index: offset=167, length=36
+      ├── 041  footer checksum: 0x7f2f15f3
+      ├── 045  version: 6
+      └── 049  magic number: 0xf09faab3f09faab3
+
+build table-format=Pebble,v7
+a@2#1,SET:blob{fileNum=1 valueID=0 valueLen=10}attr=7
+b@5#7,SET:blob{fileNum=1 valueID=200 valueLen=200}attr=7
+b@4#3,DEL:
+b@3#2,SET:blob{fileNum=2 valueID=300 valueLen=200}attr=7
+b@2#1,SET:blob{fileNum=2 valueID=400 valueLen=103}attr=7
+----
+blob-separated-values: num-values 4
+
+layout
+----
+sstable
+ ├── data  offset: 0  length: 162
+ │    ├── data block header
+ │    │    ├── columnar block header
+ │    │    │    ├── 000-004: x 03000000 # maximum key length: 3
+ │    │    │    ├── 004-005: x 01       # version 1
+ │    │    │    ├── 005-007: x 0700     # 7 columns
+ │    │    │    ├── 007-011: x 05000000 # 5 rows
+ │    │    │    ├── 011-012: b 00000100 # col 0: prefixbytes
+ │    │    │    ├── 012-016: x 2e000000 # col 0: page start 46
+ │    │    │    ├── 016-017: b 00000011 # col 1: bytes
+ │    │    │    ├── 017-021: x 39000000 # col 1: page start 57
+ │    │    │    ├── 021-022: b 00000010 # col 2: uint
+ │    │    │    ├── 022-026: x 4a000000 # col 2: page start 74
+ │    │    │    ├── 026-027: b 00000001 # col 3: bool
+ │    │    │    ├── 027-031: x 56000000 # col 3: page start 86
+ │    │    │    ├── 031-032: b 00000011 # col 4: bytes
+ │    │    │    ├── 032-036: x 68000000 # col 4: page start 104
+ │    │    │    ├── 036-037: b 00000001 # col 5: bool
+ │    │    │    ├── 037-041: x 88000000 # col 5: page start 136
+ │    │    │    ├── 041-042: b 00000001 # col 6: bool
+ │    │    │    └── 042-046: x a0000000 # col 6: page start 160
+ │    │    ├── data for column 0 (prefixbytes)
+ │    │    │    ├── 046-047: x 04 # bundle size: 16
+ │    │    │    ├── offsets table
+ │    │    │    │    ├── 047-048: x 01 # encoding: 1b
+ │    │    │    │    ├── 048-049: x 00 # data[0] = 0 [55 overall]
+ │    │    │    │    ├── 049-050: x 00 # data[1] = 0 [55 overall]
+ │    │    │    │    ├── 050-051: x 01 # data[2] = 1 [56 overall]
+ │    │    │    │    ├── 051-052: x 02 # data[3] = 2 [57 overall]
+ │    │    │    │    ├── 052-053: x 02 # data[4] = 2 [57 overall]
+ │    │    │    │    ├── 053-054: x 02 # data[5] = 2 [57 overall]
+ │    │    │    │    └── 054-055: x 02 # data[6] = 2 [57 overall]
+ │    │    │    └── data
+ │    │    │         ├── 055-055: x    # data[00]:  (block prefix)
+ │    │    │         ├── 055-055: x    # data[01]:  (bundle prefix)
+ │    │    │         ├── 055-056: x 61 # data[02]: a
+ │    │    │         ├── 056-057: x 62 # data[03]: b
+ │    │    │         ├── 057-057: x    # data[04]: .
+ │    │    │         ├── 057-057: x    # data[05]: .
+ │    │    │         └── 057-057: x    # data[06]: .
+ │    │    ├── data for column 1 (bytes)
+ │    │    │    ├── offsets table
+ │    │    │    │    ├── 057-058: x 01 # encoding: 1b
+ │    │    │    │    ├── 058-059: x 00 # data[0] = 0 [64 overall]
+ │    │    │    │    ├── 059-060: x 02 # data[1] = 2 [66 overall]
+ │    │    │    │    ├── 060-061: x 04 # data[2] = 4 [68 overall]
+ │    │    │    │    ├── 061-062: x 06 # data[3] = 6 [70 overall]
+ │    │    │    │    ├── 062-063: x 08 # data[4] = 8 [72 overall]
+ │    │    │    │    └── 063-064: x 0a # data[5] = 10 [74 overall]
+ │    │    │    └── data
+ │    │    │         ├── 064-066: x 4032 # data[0]: @2
+ │    │    │         ├── 066-068: x 4035 # data[1]: @5
+ │    │    │         ├── 068-070: x 4034 # data[2]: @4
+ │    │    │         ├── 070-072: x 4033 # data[3]: @3
+ │    │    │         └── 072-074: x 4032 # data[4]: @2
+ │    │    ├── data for column 2 (uint)
+ │    │    │    ├── 074-075: x 02   # encoding: 2b
+ │    │    │    ├── 075-076: x 00   # padding (aligning to 16-bit boundary)
+ │    │    │    ├── 076-078: x 0101 # data[0] = 257
+ │    │    │    ├── 078-080: x 0107 # data[1] = 1793
+ │    │    │    ├── 080-082: x 0003 # data[2] = 768
+ │    │    │    ├── 082-084: x 0102 # data[3] = 513
+ │    │    │    └── 084-086: x 0101 # data[4] = 257
+ │    │    ├── data for column 3 (bool)
+ │    │    │    ├── 086-087: x 00                                                               # default bitmap encoding
+ │    │    │    ├── 087-088: x 00                                                               # padding to align to 64-bit boundary
+ │    │    │    ├── 088-096: b 0000001100000000000000000000000000000000000000000000000000000000 # bitmap word 0
+ │    │    │    └── 096-104: b 0000000100000000000000000000000000000000000000000000000000000000 # bitmap summary word 0-63
+ │    │    ├── data for column 4 (bytes)
+ │    │    │    ├── offsets table
+ │    │    │    │    ├── 104-105: x 01 # encoding: 1b
+ │    │    │    │    ├── 105-106: x 00 # data[0] = 0 [111 overall]
+ │    │    │    │    ├── 106-107: x 05 # data[1] = 5 [116 overall]
+ │    │    │    │    ├── 107-108: x 0c # data[2] = 12 [123 overall]
+ │    │    │    │    ├── 108-109: x 0c # data[3] = 12 [123 overall]
+ │    │    │    │    ├── 109-110: x 13 # data[4] = 19 [130 overall]
+ │    │    │    │    └── 110-111: x 19 # data[5] = 25 [136 overall]
+ │    │    │    └── data
+ │    │    │         ├── 111-116: x 47000a0000     # data[0]: "G\x00\n\x00\x00"
+ │    │    │         ├── 116-123: x 4700c80100c801 # data[1]: "G\x00\xc8\x01\x00\xc8\x01"
+ │    │    │         ├── 123-123: x                # data[2]:
+ │    │    │         ├── 123-130: x 6701c80100ac02 # data[3]: "g\x01\xc8\x01\x00\xac\x02"
+ │    │    │         └── 130-136: x 670167009003   # data[4]: "g\x01g\x00\x90\x03"
+ │    │    ├── data for column 5 (bool)
+ │    │    │    ├── 136-137: x 00                                                               # default bitmap encoding
+ │    │    │    ├── 137-144: x 00000000000000                                                   # padding to align to 64-bit boundary
+ │    │    │    ├── 144-152: b 0001101100000000000000000000000000000000000000000000000000000000 # bitmap word 0
+ │    │    │    └── 152-160: b 0000000100000000000000000000000000000000000000000000000000000000 # bitmap summary word 0-63
+ │    │    ├── data for column 6 (bool)
+ │    │    │    └── 160-161: x 01 # zero bitmap encoding
+ │    │    └── 161-162: x 00 # block padding byte
+ │    ├── a@2#1,SET:blob handle (f0,blk0,id0,len10)
+ │    ├── b@5#7,SET:blob handle (f0,blk0,id200,len200)
+ │    ├── b@4#3,DEL:
+ │    ├── b@3#2,SET:blob handle (f1,blk0,id300,len200)
+ │    ├── b@2#1,SET:blob handle (f1,blk0,id400,len103)
+ │    └── trailer [compression=none checksum=0xeab31f03]
+ ├── index  offset: 167  length: 36
+ │    ├── 00000    block:0/162
+ │    │   
+ │    └── trailer [compression=none checksum=0x5dbaf42d]
+ ├── blob-reference-index  offset: 208  length: 35
+ │    ├── 00000 (8)
+ │    │    └── block: 0, values size: 210, bitmap size: 4 byte(s), bitmap: [00000001 00000000 00011000 00000001]
+ │    ├── 00008 (10)
+ │    │    └── block: 0, values size: 303, bitmap size: 6 byte(s), bitmap: [00000000 00100101 00010000 00000000 00001100 00000001]
+ │    └── trailer [compression=none checksum=0xed355aac]
+ ├── properties  offset: 248  length: 480
+ │    ├── 00000    obsolete-key (13)
+ │    ├── 00013    pebble.colblk.schema (65)
+ │    ├── 00078    pebble.compression_stats (32)
+ │    ├── 00110    pebble.num.values.in.blob-files (32)
+ │    ├── 00142    pebble.raw.point-tombstone.key.size (36)
+ │    ├── 00178    rocksdb.block.based.table.index.type (40)
+ │    ├── 00218    rocksdb.comparator (42)
+ │    ├── 00260    rocksdb.compression (25)
+ │    ├── 00285    rocksdb.data.size (19)
+ │    ├── 00304    rocksdb.deleted.keys (21)
+ │    ├── 00325    rocksdb.filter.size (20)
+ │    ├── 00345    rocksdb.index.size (19)
+ │    ├── 00364    rocksdb.merge.operands (23)
+ │    ├── 00387    rocksdb.merge.operator (40)
+ │    ├── 00427    rocksdb.num.data.blocks (24)
+ │    ├── 00451    rocksdb.num.entries (20)
+ │    ├── 00471    rocksdb.num.range-deletions (28)
+ │    ├── 00499    rocksdb.property.collectors (41)
+ │    ├── 00540    rocksdb.raw.key.size (21)
+ │    ├── 00561    rocksdb.raw.value.size (24)
+ │    └── trailer [compression=snappy checksum=0xbb737f38]
+ ├── meta-index  offset: 733  length: 72
+ │    ├── 0000    pebble.blob_ref_index block:208/35
+ │    │   
+ │    ├── 0001    rocksdb.properties block:248/480
+ │    │   
+ │    └── trailer [compression=none checksum=0x2b993af]
+ └── footer  offset: 810  length: 61
+      ├── 000  checksum type: crc32c
+      ├── 001  meta: offset=733, length=72
+      ├── 004  index: offset=167, length=36
+      ├── 041  attributes: [BlobValues,PointKeys]
+      ├── 045  footer checksum: 0x687d722b
+      ├── 049  version: 7
+      └── 053  magic number: 0xf09faab3f09faab3
+
+# TODO(jackson): Test iteration over the blob-separated values when that's
+# supported.

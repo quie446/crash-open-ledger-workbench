@@ -1,0 +1,208 @@
+init l-base-max-bytes=1
+----
+L6: 8 EiB
+
+init l-base-max-bytes=1
+L6: 1
+----
+L6: 1 B
+
+init l-base-max-bytes=1
+L6: 2
+----
+Multiplier: 2.00
+L5: 1 B
+L6: 2 B
+
+init l-base-max-bytes=1
+L3: 1
+L4: 1
+L5: 1
+L6: 1
+----
+Multiplier: 2.00
+L3: 1 B
+L4: 2 B
+L5: 3 B
+L6: 4 B
+
+init l-base-max-bytes=1
+L1: 1
+L2: 1
+L3: 1
+L4: 1
+L5: 1
+L6: 1
+----
+Multiplier: 1.00
+L1: 1 B
+L2: 1 B
+L3: 2 B
+L4: 3 B
+L5: 4 B
+L6: 6 B
+
+init l-base-max-bytes=1
+L1: 1
+L2: 10
+L3: 100
+L4: 1000
+L5: 10000
+L6: 100000
+----
+Multiplier: 10.00
+L1: 1 B
+L2: 10 B
+L3: 100 B
+L4: 1 KiB
+L5: 9.8 KiB
+L6: 98 KiB
+
+init l-base-max-bytes=1
+L6: 10
+----
+Multiplier: 9.00
+L5: 1 B
+L6: 9 B
+
+init l-base-max-bytes=1
+6: 100
+----
+Multiplier: 9.00
+L4: 1 B
+L5: 9 B
+L6: 90 B
+
+init l-base-max-bytes=1
+L6: 1000
+----
+Multiplier: 10.00
+L3: 1 B
+L4: 10 B
+L5: 93 B
+L6: 900 B
+
+init l-base-max-bytes=1
+L6: 10000
+----
+Multiplier: 10.00
+L2: 1 B
+L3: 10 B
+L4: 95 B
+L5: 924 B
+L6: 8.8 KiB
+
+init l-base-max-bytes=1
+L6: 100000
+----
+Multiplier: 10.00
+L1: 1 B
+L2: 10 B
+L3: 96 B
+L4: 939 B
+L5: 9 KiB
+L6: 88 KiB
+
+init l-base-max-bytes=1
+L6: 1000000
+----
+Multiplier: 10.00
+L1: 9 B
+L2: 90 B
+L3: 900 B
+L4: 8.8 KiB
+L5: 88 KiB
+L6: 879 KiB
+
+init l-base-max-bytes=64
+L6: 64000000
+----
+Multiplier: 10.00
+L1: 576 B
+L2: 5.6 KiB
+L3: 56 KiB
+L4: 562 KiB
+L5: 5.5 MiB
+L6: 55 MiB
+
+init l-base-max-bytes=1
+L0: 4
+L6: 10
+----
+Multiplier: 10.00
+L5: 1 B
+L6: 10 B
+
+init
+L6: 10GiB
+----
+Multiplier: 5.24
+L3: 64 MiB
+L4: 335 MiB
+L5: 1.7 GiB
+L6: 9 GiB
+
+init
+L6: 100GiB
+----
+Multiplier: 6.16
+L2: 64 MiB
+L3: 394 MiB
+L4: 2.4 GiB
+L5: 15 GiB
+L6: 90 GiB
+
+init
+L6: 1TiB
+----
+Multiplier: 6.82
+L1: 64 MiB
+L2: 436 MiB
+L3: 2.9 GiB
+L4: 20 GiB
+L5: 135 GiB
+L6: 922 GiB
+
+init
+L6: 7TiB
+----
+Multiplier: 10.00
+L1: 66 MiB
+L2: 661 MiB
+L3: 6.5 GiB
+L4: 65 GiB
+L5: 645 GiB
+L6: 6.3 TiB
+
+init
+L6: 10TiB
+----
+Multiplier: 10.00
+L1: 94 MiB
+L2: 944 MiB
+L3: 9.2 GiB
+L4: 92 GiB
+L5: 922 GiB
+L6: 9 TiB
+
+init
+L6: 40TiB
+----
+Multiplier: 10.00
+L1: 377 MiB
+L2: 3.7 GiB
+L3: 37 GiB
+L4: 369 GiB
+L5: 3.6 TiB
+L6: 36 TiB
+
+init
+L6: 100TiB
+----
+Multiplier: 10.00
+L1: 944 MiB
+L2: 9.2 GiB
+L3: 92 GiB
+L4: 922 GiB
+L5: 9 TiB
+L6: 90 TiB

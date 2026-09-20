@@ -1,0 +1,281 @@
+# Simple sanity test with single level index.
+build table-format=Pebble,v4
+a#1,SET:a
+b#1,SET:b
+c#1,SET:c
+d#1,SET:d
+----
+point:    [a#1,SET-d#1,SET]
+seqnums:  [#1-#1]
+
+virtualize lower=b#1,SET upper=c#1,SET show-size
+----
+bounds:  [b#1,SET-c#1,SET]
+size: 50 B / backing size: 595 B
+
+# Repeat the above with (Pebble,v5).
+
+build table-format=Pebble,v5
+a#1,SET:a
+b#1,SET:b
+c#1,SET:c
+d#1,SET:d
+----
+point:    [a#1,SET-d#1,SET]
+seqnums:  [#1-#1]
+
+virtualize lower=b#1,SET upper=c#1,SET show-size
+----
+bounds:  [b#1,SET-c#1,SET]
+size: 87 B / backing size: 755 B
+
+
+# Test 2: Similar to test 1 but force two level iterators.
+build block-size=1 index-block-size=1 table-format=Pebble,v4
+a#1,SET:a
+b#1,SET:b
+c#1,SET:c
+d#1,SET:d
+----
+point:    [a#1,SET-d#1,SET]
+seqnums:  [#1-#1]
+
+virtualize lower=b#1,SET upper=c#1,SET show-size
+----
+bounds:  [b#1,SET-c#1,SET]
+size: 54 B / backing size: 878 B
+
+# Test the constrain bounds function. It performs some subtle shrinking and
+# expanding of bounds. The current virtual sstable bounds are [b,c].
+# 1. start key < virtual sstable start key, end key is exclusive.
+constrain a,bb,false
+----
+b,bb,false
+
+# 2. start key < virtual sstable start key, end key is inclusive.
+constrain a,bb,true
+----
+b,bb,true
+
+# 3. start key is within virtual sstable bounds, end key is at virtual sstable
+# end bound, but is exclusive.
+constrain bb,c,false
+----
+bb,c,false
+
+# 3. start key is within virtual sstable bounds, end key is at virtual sstable
+# end bound, but is inclusive.
+constrain bb,c,true
+----
+bb,c,true
+
+# 4. start key is within virtual sstable bounds, end key is above virtual
+# sstable end bound and is exclusive.
+constrain bb,e,false
+----
+bb,c,true
+
+# 5. start key is within virtual sstable bounds, end key is above virtual
+# sstable end bound and is inclusive.
+constrain bb,e,true
+----
+bb,c,true
+
+# 6. Both start, end keys fit within virtual sstable bounds.
+constrain bb,bbb,false
+----
+bb,bbb,false
+
+# 6. Both start, end keys are out of bounds, but overlap.
+constrain a,d,false
+----
+b,c,true
+
+# 7. start, end keys have no overlap with virtual sstable bounds. Note that
+# lower becomes greater than upper here. We support this in the iterators
+# and don't return any keys for this case.
+constrain a,aa,false
+----
+b,aa,false
+
+# Repeat the above with (Pebble,v5).
+
+build block-size=1 index-block-size=1 table-format=Pebble,v5
+a#1,SET:a
+b#1,SET:b
+c#1,SET:c
+d#1,SET:d
+----
+point:    [a#1,SET-d#1,SET]
+seqnums:  [#1-#1]
+
+virtualize lower=b#1,SET upper=c#1,SET show-size
+----
+bounds:  [b#1,SET-c#1,SET]
+size: 158 B / backing size: 1.2 KiB
+
+# Test the constrain bounds function. It performs some subtle shrinking and
+# expanding of bounds. The current virtual sstable bounds are [b,c].
+# 1. start key < virtual sstable start key, end key is exclusive.
+constrain a,bb,false
+----
+b,bb,false
+
+# 2. start key < virtual sstable start key, end key is inclusive.
+constrain a,bb,true
+----
+b,bb,true
+
+# 3. start key is within virtual sstable bounds, end key is at virtual sstable
+# end bound, but is exclusive.
+constrain bb,c,false
+----
+bb,c,false
+
+# 3. start key is within virtual sstable bounds, end key is at virtual sstable
+# end bound, but is inclusive.
+constrain bb,c,true
+----
+bb,c,true
+
+# 4. start key is within virtual sstable bounds, end key is above virtual
+# sstable end bound and is exclusive.
+constrain bb,e,false
+----
+bb,c,true
+
+# 5. start key is within virtual sstable bounds, end key is above virtual
+# sstable end bound and is inclusive.
+constrain bb,e,true
+----
+bb,c,true
+
+# 6. Both start, end keys fit within virtual sstable bounds.
+constrain bb,bbb,false
+----
+bb,bbb,false
+
+# 6. Both start, end keys are out of bounds, but overlap.
+constrain a,d,false
+----
+b,c,true
+
+# 7. start, end keys have no overlap with virtual sstable bounds. Note that
+# lower becomes greater than upper here. We support this in the iterators
+# and don't return any keys for this case.
+constrain a,aa,false
+----
+b,aa,false
+
+build block-size=1 index-block-size=1 table-format=Pebble,v4
+a#1,SET:a
+d#2,SET:d
+f#3,SET:f
+Span: d-e:{(#4,RANGEDEL)}
+Span: a-d:{(#11,RANGEKEYSET,@10,foo)}
+Span: g-l:{(#5,RANGEDEL)}
+Span: y-z:{(#12,RANGEKEYSET,@11,foo)}
+----
+point:    [a#1,SET-f#3,SET]
+rangedel: [d#4,RANGEDEL-l#inf,RANGEDEL]
+rangekey: [a#11,RANGEKEYSET-z#inf,RANGEKEYSET]
+seqnums:  [#1-#12]
+
+# Note that we shouldn't have range del spans which cross virtual sstable
+# boundaries; num.range-key-sets must be >= 1.
+virtualize lower=a#1,SET upper=f#1,SET show-size
+----
+bounds:  [a#1,SET-f#1,SET]
+size: 81 B / backing size: 1 KiB
+
+# Repeat the above with (Pebble,v5).
+
+build block-size=1 index-block-size=1 table-format=Pebble,v5
+a#1,SET:a
+d#2,SET:d
+f#3,SET:f
+Span: d-e:{(#4,RANGEDEL)}
+Span: a-d:{(#11,RANGEKEYSET,@10,foo)}
+Span: g-l:{(#5,RANGEDEL)}
+Span: y-z:{(#12,RANGEKEYSET,@11,foo)}
+----
+point:    [a#1,SET-f#3,SET]
+rangedel: [d#4,RANGEDEL-l#inf,RANGEDEL]
+rangekey: [a#11,RANGEKEYSET-z#inf,RANGEKEYSET]
+seqnums:  [#1-#12]
+
+# Note that we shouldn't have range del spans which cross virtual sstable
+# boundaries; num.range-key-sets must be >= 1.
+virtualize lower=a#1,SET upper=f#1,SET show-size
+----
+bounds:  [a#1,SET-f#1,SET]
+size: 241 B / backing size: 1.4 KiB
+
+build table-format=Pebble,v4
+a#1,SET:a
+b#2,SET:b
+c#3,SET:c
+d#4,SET:d
+dd#5,SET:dd
+ddd#6,SET:ddd
+g#8,SET:g
+h#9,SET:h
+----
+point:    [a#1,SET-h#9,SET]
+seqnums:  [#1-#9]
+
+virtualize lower=dd#5,SET upper=ddd#6,SET show-size
+----
+bounds:  [dd#5,SET-ddd#6,SET]
+size: 97 B / backing size: 643 B
+
+# Repeat the above with (Pebble,v5).
+
+build table-format=Pebble,v5
+a#1,SET:a
+b#2,SET:b
+c#3,SET:c
+d#4,SET:d
+dd#5,SET:dd
+ddd#6,SET:ddd
+g#8,SET:g
+h#9,SET:h
+----
+point:    [a#1,SET-h#9,SET]
+seqnums:  [#1-#9]
+
+virtualize lower=dd#5,SET upper=ddd#6,SET show-size
+----
+bounds:  [dd#5,SET-ddd#6,SET]
+size: 107 B / backing size: 776 B
+
+build
+a#1,DEL:
+b#1,DELSIZED:
+Span: c-d:{(#1,RANGEDEL)}
+----
+point:    [a#1,DEL-b#1,DELSIZED]
+rangedel: [c#1,RANGEDEL-d#inf,RANGEDEL]
+seqnums:  [#1-#1]
+
+# Verify that we get 3 deletions instead of 1 (because it has to be the sum of
+# its components).
+virtualize lower=a#1,DEL upper=a0#1,SET show-size
+----
+bounds:  [a#1,DEL-a0#1,SET]
+size: 108 B / backing size: 859 B
+
+# Test virtual sstable with a synthetic prefix.
+build
+a#1,SET:a
+b#1,SET:b
+c#1,SET:c
+d#1,SET:d
+----
+point:    [a#1,SET-d#1,SET]
+seqnums:  [#1-#1]
+
+virtualize lower=poi-b#1,SET upper=poi-c#1,SET prefix=poi- show-size
+----
+bounds:  [poi-b#1,SET-poi-c#1,SET]
+size: 102 B / backing size: 734 B

@@ -1,0 +1,417 @@
+# Note that this test file uses a levelIterTestIter which combines a
+# point iterator and a range-del iterator, returning both results in a
+# single key:
+#
+#   <point-key>/<tombstone>#<point-seqnum,point-kind>
+
+# Verify that SeekGE, SeekLT, Next, and Prev all pause at table
+# boundaries in the presence of lower/upper bounds and range
+# tombstones. Verify that SeekPrefixGE pauses at a table boundary in
+# the presence of range tombstones.
+
+build
+a#9,SET:a
+b#8,SET:b
+----
+0: a#9,SET-b#8,SET
+
+build
+c#7,SET:c
+d#6,RANGEDEL:e
+f#5,SET:f
+----
+0: a#9,SET-b#8,SET
+1: c#7,SET-f#5,SET
+
+build
+g#4,SET:g
+h#3,SET:h
+----
+0: a#9,SET-b#8,SET
+1: c#7,SET-f#5,SET
+2: g#4,SET-h#3,SET
+
+iter
+seek-ge d
+next
+next
+----
+d#inf,RANGEDEL: / d-e:{(#6,RANGEDEL)}
+e#inf,RANGEDEL:
+f#5,SET:f
+
+iter
+set-bounds upper=d
+seek-ge d
+----
+. / d-e:{(#6,RANGEDEL)}
+
+iter
+set-bounds upper=d
+seek-ge c
+next
+prev
+next
+----
+c#7,SET:c / d-e:{(#6,RANGEDEL)}
+.
+c#7,SET:c
+.
+
+# There is no point key with d, but since there is a rangedel, levelIter returns
+# the boundary key using the largest key, f, in the file.
+iter
+seek-prefix-ge d
+next
+----
+d#inf,RANGEDEL: / d-e:{(#6,RANGEDEL)}
+d\x00#inf,RANGEDEL:
+
+# Tests a sequence of SeekPrefixGE with monotonically increasing keys, some of
+# which are present and some not (so fail the bloom filter match). The seek to
+# cc returns a range deletion tombstone's start key.
+iter
+seek-prefix-ge aa
+seek-prefix-ge c
+seek-prefix-ge cc
+next
+seek-prefix-ge f
+seek-prefix-ge g
+seek-prefix-ge gg
+seek-prefix-ge h
+----
+.
+c#7,SET:c / d-e:{(#6,RANGEDEL)}
+d#inf,RANGEDEL: / d-e:{(#6,RANGEDEL)}
+cc\x00#inf,RANGEDEL:
+f#5,SET:f
+g#4,SET:g
+.
+h#3,SET:h
+
+# Test that when sequentially iterate through all 3 files, the stats
+# accumulate as we close a file and switch to the next one. Also, while in the
+# middle of the first file, a reset-stats propagates to the underlying
+# iterators, and when done iterating, a reset-stats does reset the local
+# state.
+iter
+seek-ge a
+stats
+reset-stats
+stats
+next
+stats
+next
+stats
+next
+stats
+next
+stats
+next
+stats
+next
+stats
+next
+stats
+next
+stats
+reset-stats
+stats
+----
+a#9,SET:a
+blocks: 0B cached, 56B not cached (read time: 0s); points: 0 (0B keys, 0B values)
+blocks: 0B cached; points: 0 (0B keys, 0B values)
+b#8,SET:b
+blocks: 0B cached; points: 0 (0B keys, 0B values)
+c#7,SET:c
+blocks: 0B cached, 56B not cached (read time: 0s); points: 0 (0B keys, 0B values)
+d#inf,RANGEDEL:
+blocks: 0B cached, 56B not cached (read time: 0s); points: 0 (0B keys, 0B values)
+e#inf,RANGEDEL:
+blocks: 0B cached, 56B not cached (read time: 0s); points: 0 (0B keys, 0B values)
+f#5,SET:f
+blocks: 0B cached, 56B not cached (read time: 0s); points: 0 (0B keys, 0B values)
+g#4,SET:g
+blocks: 0B cached, 112B not cached (read time: 0s); points: 0 (0B keys, 0B values)
+h#3,SET:h
+blocks: 0B cached, 112B not cached (read time: 0s); points: 0 (0B keys, 0B values)
+.
+blocks: 0B cached, 112B not cached (read time: 0s); points: 0 (0B keys, 0B values)
+blocks: 0B cached; points: 0 (0B keys, 0B values)
+
+iter
+set-bounds lower=d
+seek-lt d
+----
+. / d-e:{(#6,RANGEDEL)}
+
+iter
+set-bounds lower=d
+seek-lt g
+prev
+next
+prev
+prev
+prev
+----
+f#5,SET:f / d-e:{(#6,RANGEDEL)}
+e#inf,RANGEDEL:
+f#5,SET:f
+e#inf,RANGEDEL:
+d#inf,RANGEDEL:
+.
+
+# Verify that First() in the presence of an upper-bound pauses at the
+# first range deletion's start key.
+
+clear
+----
+
+build
+d#6,RANGEDEL:e
+f#5,SET:f
+----
+0: d#6,RANGEDEL-f#5,SET
+
+iter
+set-bounds upper=f
+first
+----
+d#inf,RANGEDEL:
+
+# Verify that Last() in the presence of a lower-bound pauses at the
+# last range deletion's end key.
+
+clear
+----
+
+build
+c#7,SET:c
+d#6,RANGEDEL:e
+----
+0: c#7,SET-e#inf,RANGEDEL
+
+iter
+set-bounds lower=c
+last
+prev
+prev
+----
+e#inf,RANGEDEL:
+d#inf,RANGEDEL:
+c#7,SET:c
+
+# Verify that a seek to a file with range tombstones as boundaries pauses on
+# those boundaries.
+
+clear
+----
+
+build
+a#5,RANGEDEL:b
+c#7,SET:c
+d#6,RANGEDEL:e
+----
+0: a#5,RANGEDEL-e#inf,RANGEDEL
+
+build
+f#8,SET:f
+g#9,SET:g
+----
+0: a#5,RANGEDEL-e#inf,RANGEDEL
+1: f#8,SET-g#9,SET
+
+iter
+seek-ge d
+prev
+next
+next
+next
+----
+d#inf,RANGEDEL: / d-e:{(#6,RANGEDEL)}
+c#7,SET:c
+d#inf,RANGEDEL:
+e#inf,RANGEDEL:
+f#8,SET:f
+
+iter
+seek-lt b
+next
+prev
+prev
+prev
+----
+b#inf,RANGEDEL: / a-b:{(#5,RANGEDEL)}
+c#7,SET:c
+b#inf,RANGEDEL:
+a#inf,RANGEDEL:
+.
+
+# Verify that prev when positioned at the start bound of the first range
+# deletion returns the last key.
+
+clear
+----
+
+build
+a#1,SET:a
+b#1,SET:b
+d#2,RANGEDEL:e
+----
+0: a#1,SET-e#inf,RANGEDEL
+
+iter
+seek-lt c
+seek-ge d
+prev
+----
+b#1,SET:b
+d#inf,RANGEDEL: / d-e:{(#2,RANGEDEL)}
+b#1,SET:b
+
+# Verify that next when positioned at the start boundary of the first range
+# deletion returns the first key.
+
+clear
+----
+
+build
+a#1,RANGEDEL:b
+d#2,SET:d
+e#2,SET:e
+----
+0: a#1,RANGEDEL-e#2,SET
+
+iter
+seek-ge d
+seek-lt d
+next
+----
+d#2,SET:d
+b#inf,RANGEDEL: / a-b:{(#1,RANGEDEL)}
+d#2,SET:d
+
+# Verify SeekPrefixGE correctness with trySeekUsingNext=true
+clear
+----
+
+build
+a#1,SET:a
+b#2,SET:b
+c#4,RANGEDEL:e
+----
+0: a#1,SET-e#inf,RANGEDEL
+
+build
+e#4,SET:e
+f#5,SINGLEDEL:
+f#4,SET:f
+g#6,SET:g
+h#7,SINGLEDEL:
+----
+0: a#1,SET-e#inf,RANGEDEL
+1: e#4,SET-h#7,SINGLEDEL
+
+build
+h#6,SET:h
+i#6,SET:i
+----
+0: a#1,SET-e#inf,RANGEDEL
+1: e#4,SET-h#7,SINGLEDEL
+2: h#6,SET-i#6,SET
+
+build
+j#7,SET:j
+----
+0: a#1,SET-e#inf,RANGEDEL
+1: e#4,SET-h#7,SINGLEDEL
+2: h#6,SET-i#6,SET
+3: j#7,SET-j#7,SET
+
+# Seeks to immediately following keys.
+iter
+seek-prefix-ge a
+seek-prefix-ge a try-seek-using-next
+seek-prefix-ge b try-seek-using-next
+next
+seek-prefix-ge c
+seek-prefix-ge d try-seek-using-next
+seek-prefix-ge f try-seek-using-next
+seek-prefix-ge g try-seek-using-next
+seek-prefix-ge h try-seek-using-next
+seek-prefix-ge i try-seek-using-next
+seek-prefix-ge j try-seek-using-next
+----
+a#1,SET:a / c-e:{(#4,RANGEDEL)}
+a#1,SET:a / c-e:{(#4,RANGEDEL)}
+b#2,SET:b / c-e:{(#4,RANGEDEL)}
+c#inf,RANGEDEL:
+c#inf,RANGEDEL: / c-e:{(#4,RANGEDEL)}
+d#inf,RANGEDEL: / c-e:{(#4,RANGEDEL)}
+f#5,SINGLEDEL:
+g#6,SET:g
+h#7,SINGLEDEL:
+i#6,SET:i
+j#7,SET:j
+
+# Seeks to keys that are in the next file, so cannot use Next.
+iter
+seek-prefix-ge a
+seek-prefix-ge e try-seek-using-next
+seek-prefix-ge i try-seek-using-next
+seek-prefix-ge j try-seek-using-next
+----
+a#1,SET:a / c-e:{(#4,RANGEDEL)}
+e#4,SET:e
+i#6,SET:i
+j#7,SET:j
+
+# Verify that we do not open files that do not have point keys.
+
+clear
+----
+
+build
+a#9,SET:a
+b#8,SET:b
+----
+0: a#9,SET-b#8,SET
+
+build
+c#7,SET:c
+d#6,RANGEDEL:e
+f#5,SET:f
+----
+0: a#9,SET-b#8,SET
+1: c#7,SET-f#5,SET
+
+build table-format=Pebble,v2
+g#6,RANGEKEYDEL:h
+----
+0: a#9,SET-b#8,SET
+1: c#7,SET-f#5,SET
+2: g#6,RANGEKEYDEL-h#inf,RANGEKEYDEL
+
+build
+i#4,SET:i
+j#3,SET:j
+----
+0: a#9,SET-b#8,SET
+1: c#7,SET-f#5,SET
+2: g#6,RANGEKEYDEL-h#inf,RANGEKEYDEL
+3: i#4,SET-j#3,SET
+
+iter
+seek-ge f
+next
+----
+f#5,SET:f
+i#4,SET:i
+
+# The below count should be 3, as we skip over the rangekey-only file.
+# TODO(jackson): When we stop opening range deletion iterators twice, this
+# should be 2.
+
+iters-created
+----
+3

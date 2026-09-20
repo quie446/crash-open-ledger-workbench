@@ -1,0 +1,103 @@
+# Test lazy loading behavior - index not loaded on creation, loaded after first access
+
+build table-format=Pebble,v3 bloom-filter
+a#1,SET:A
+b#2,SET:B
+c#3,SET:C
+d#4,SET:D
+e#5,SET:E
+----
+
+iter-lazy
+check-index-loaded
+----
+check-index-loaded: false
+
+iter-lazy
+first
+check-index-loaded
+----
+             first: <a:1>:A
+check-index-loaded: true
+
+iter-lazy
+check-index-loaded
+seek-ge c
+check-index-loaded
+----
+check-index-loaded: false
+         seek-ge c: <c:3>:C
+check-index-loaded: true
+
+iter-lazy
+check-index-loaded
+last
+check-index-loaded
+----
+check-index-loaded: false
+              last: <e:5>:E
+check-index-loaded: true
+
+iter-lazy
+check-index-loaded
+seek-lt d
+check-index-loaded
+----
+check-index-loaded: false
+         seek-lt d: <c:3>:C
+check-index-loaded: true
+
+# Test with column blocks format
+build table-format=Pebble,v5 bloom-filter
+f#6,SET:F
+g#7,SET:G
+h#8,SET:H
+i#9,SET:I
+j#10,SET:J
+----
+
+iter-lazy
+check-index-loaded
+----
+check-index-loaded: false
+
+iter-lazy
+first
+check-index-loaded
+----
+             first: <f:6>:F
+check-index-loaded: true
+
+iter-lazy
+check-index-loaded
+seek-ge h
+check-index-loaded
+----
+check-index-loaded: false
+         seek-ge h: <h:8>:H
+check-index-loaded: true
+
+# Test bloom filter optimization - index might not be loaded for misses
+build table-format=Pebble,v3 bloom-filter
+k#11,SET:K
+l#12,SET:L
+m#13,SET:M
+----
+
+iter-lazy
+check-index-loaded
+seek-prefix-ge nonexistent_key
+check-index-loaded
+----
+check-index-loaded: false
+seek-prefix-ge nonexistent_key: .
+check-index-loaded: false
+
+iter-lazy
+check-index-loaded
+seek-prefix-ge k
+check-index-loaded
+----
+check-index-loaded: false
+  seek-prefix-ge k: <k:11>:K
+check-index-loaded: true

@@ -1,0 +1,145 @@
+setup-inputs a a
+L0
+  a#1,SET-b#2,SET
+----
+L0
+  000001:[a#1,SET-b#2,SET]
+
+setup-inputs c c
+L0
+  a#1,SET-b#2,SET
+----
+
+# The range deletion sentinel acts as a clean cut boundary.
+setup-inputs a a
+L1
+  a#1,SET-b#inf,RANGEDEL
+  b#1,SET-c#2,SET
+----
+L1
+  000001:[a#1,SET-b#inf,RANGEDEL]
+
+# Verify we expand the output level inputs to a clean cut.
+setup-inputs a a
+L1
+  a#5,SET-b#6,SET
+L2
+  a#3,SET-c#inf,RANGEDEL
+  c#3,SET-d#2,SET
+----
+L1
+  000001:[a#5,SET-b#6,SET]
+L2
+  000002:[a#3,SET-c#inf,RANGEDEL]
+
+# Verify we grow the start level inputs to include all sstables which
+# lie within the output level bounds.
+setup-inputs a a
+L1
+  a#5,SET-b#6,SET
+  c#4,SET-e#3,SET
+L2
+  a#3,SET-d#4,SET
+----
+L1
+  000001:[a#5,SET-b#6,SET]
+  000002:[c#4,SET-e#3,SET]
+L2
+  000003:[a#3,SET-d#4,SET]
+
+# Verify we limit the start level input expansion according to available
+# disk capacity.
+setup-inputs avail-bytes=10 a a
+L1
+  a#5,SET-b#6,SET size=2
+  c#4,SET-e#3,SET size=1
+L2
+  a#3,SET-d#4,SET size=3
+----
+L1
+  000001:[a#5,SET-b#6,SET]
+L2
+  000003:[a#3,SET-d#4,SET]
+
+# We won't grow the start level inputs if doing so would grow the
+# output level inputs.
+setup-inputs a a
+L1
+  a#5,SET-b#6,SET
+  c#4,SET-e#3,SET
+L2
+  a#3,SET-d#4,SET
+  e#2,SET-f#1,SET
+----
+L1
+  000001:[a#5,SET-b#6,SET]
+L2
+  000003:[a#3,SET-d#4,SET]
+
+# Verify setup inputs can identify compacting files in range
+setup-inputs a d
+L1
+  000001:a#5,SET-f#6,SET
+L2
+  000002:a#3,SET-c#4,SET
+  000003:d#3,SET-e#2,SET
+  000004:f#3,SET-g#6,SET
+compactions
+  L2 000003 -> L3
+----
+L1
+  000001:[a#5,SET-f#6,SET]
+L2
+  000002:[a#3,SET-c#4,SET]
+  000003:[d#3,SET-e#2,SET]
+  000004:[f#3,SET-g#6,SET]
+is-compacting
+compactions
+  L2 000003 -> L3
+
+# Verify when there is one file in range and it is compacting
+setup-inputs a a
+L2
+  000001:a#3,SET-c#4,SET
+  000002:d#3,SET-e#2,SET
+compactions
+  L2 000001 -> L3
+----
+L2
+  000001:[a#3,SET-c#4,SET]
+is-compacting
+compactions
+  L2 000001 -> L3
+
+# Verify when there is one file in level and is compacting
+setup-inputs a a
+L2
+   000001:a#3,SET-c#4,SET compacting
+compactions
+  L2 000001 -> L3
+----
+L2
+  000001:[a#3,SET-c#4,SET]
+is-compacting
+compactions
+  L2 000001 -> L3
+
+
+# Setup a compaction where the input files don't overlap
+# but the compaction range conflicts wtih an ongoing compaction.
+
+setup-inputs e f
+L1
+  000001:a#5,SET-b#6,SET
+  000003:e#7,SET-f#8,SET
+  000002:v#3,SET-z#4,SET
+L2
+  000004:a#1,SET-c#2,SET
+compactions
+  L1 000001 000002 -> L2
+----
+L1
+  000003:[e#7,SET-f#8,SET]
+is-compacting
+compactions
+  L1 000001 000002 -> L2

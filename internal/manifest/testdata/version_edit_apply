@@ -1,0 +1,510 @@
+define v1
+L0:
+  000002:[c#3,SET-d#4,SET] seqnums:[#3-#4]
+  000001:[a#1,SET-b#2,SET] seqnums:[#1-#2]
+----
+L0.0:
+  000001:[a#1,SET-b#2,SET] seqnums:[#1-#2] points:[a#1,SET-b#2,SET]
+  000002:[c#3,SET-d#4,SET] seqnums:[#3-#4] points:[c#3,SET-d#4,SET]
+
+# Empty edit.
+apply v1
+----
+L0.0:
+  000001:[a#1,SET-b#2,SET] seqnums:[#1-#2] points:[a#1,SET-b#2,SET]
+  000002:[c#3,SET-d#4,SET] seqnums:[#3-#4] points:[c#3,SET-d#4,SET]
+
+apply v1
+  del-table: L0 000001
+  add-table: L2 000001:[a#1,SET-b#2,SET] seqnums:[#1-#2]
+  add-table: L2 000004:[c#3,SET-d#4,SET] seqnums:[#3-#4]
+----
+L0.0:
+  000002:[c#3,SET-d#4,SET] seqnums:[#3-#4] points:[c#3,SET-d#4,SET]
+L2:
+  000001:[a#1,SET-b#2,SET] seqnums:[#1-#2] points:[a#1,SET-b#2,SET]
+  000004:[c#3,SET-d#4,SET] seqnums:[#3-#4] points:[c#3,SET-d#4,SET]
+
+apply v1
+  del-table: L1 000001
+----
+pebble: internal error: No current or added files but have deleted files: 1
+
+apply v1
+  del-table: L0 000001
+  add-table: L2 000001:[a#1,SET-b#2,SET] seqnums:[#1-#2]
+  add-table: L2 000004:[b#3,SET-d#4,SET] seqnums:[#3-#4]
+----
+pebble: internal error: L2 files 000001 and 000004 have overlapping ranges: [a#1,SET-b#2,SET] vs [b#3,SET-d#4,SET]
+
+define v2
+L0:
+  000002:[c#3,SET-d#4,SET] seqnums:[#3-#4]
+  000001:[a#1,SET-c#2,SET] seqnums:[#1-#2]
+----
+L0.1:
+  000002:[c#3,SET-d#4,SET] seqnums:[#3-#4] points:[c#3,SET-d#4,SET]
+L0.0:
+  000001:[a#1,SET-c#2,SET] seqnums:[#1-#2] points:[a#1,SET-c#2,SET]
+
+apply v2
+  add-table: L0 000004:[b#3,SET-d#5,SET] seqnums:[#3-#5]
+----
+L0.2:
+  000004:[b#3,SET-d#5,SET] seqnums:[#3-#5] points:[b#3,SET-d#5,SET]
+L0.1:
+  000002:[c#3,SET-d#4,SET] seqnums:[#3-#4] points:[c#3,SET-d#4,SET]
+L0.0:
+  000001:[a#1,SET-c#2,SET] seqnums:[#1-#2] points:[a#1,SET-c#2,SET]
+
+apply v2
+  add-table: L0 000004:[b#0,SET-d#0,SET] seqnums:[#0-#0]
+----
+L0.2:
+  000002:[c#3,SET-d#4,SET] seqnums:[#3-#4] points:[c#3,SET-d#4,SET]
+L0.1:
+  000001:[a#1,SET-c#2,SET] seqnums:[#1-#2] points:[a#1,SET-c#2,SET]
+L0.0:
+  000004:[b#0,SET-d#0,SET] seqnums:[#0-#0] points:[b#0,SET-d#0,SET]
+
+
+define empty
+----
+
+apply empty
+  add-table: L0 000001:[a#1,SET-c#2,SET] seqnums:[#1-#2]
+  add-table: L0 000004:[b#3,SET-d#5,SET] seqnums:[#3-#5]
+----
+L0.1:
+  000004:[b#3,SET-d#5,SET] seqnums:[#3-#5] points:[b#3,SET-d#5,SET]
+L0.0:
+  000001:[a#1,SET-c#2,SET] seqnums:[#1-#2] points:[a#1,SET-c#2,SET]
+
+apply v2
+  add-table: L0 000001:[a#1,SET-c#2,SET] seqnums:[#1-#2]
+----
+pebble: files 000001:[a#1,SET-c#2,SET] and 000001:[a#1,SET-c#2,SET] collided on sort keys
+
+apply empty
+  add-table: L0 000001:[a#1,SET-c#2,SET] seqnums:[#1-#2]
+----
+L0.0:
+  000001:[a#1,SET-c#2,SET] seqnums:[#1-#2] points:[a#1,SET-c#2,SET]
+
+apply empty
+  add-table: L2 000010:[j#3,SET-m#2,SET]
+  add-table: L2 000006:[a#10,SET-a#7,SET]
+----
+L2:
+  000006:[a#10,SET-a#7,SET] seqnums:[#0-#0] points:[a#10,SET-a#7,SET]
+  000010:[j#3,SET-m#2,SET] seqnums:[#0-#0] points:[j#3,SET-m#2,SET]
+
+define v3
+L2:
+  000003:[b#1,SET-c#2,SET]
+  000004:[d#3,SET-f#4,SET]
+  000005:[h#3,SET-h#2,SET]
+  000002:[n#5,SET-q#3,SET]
+  000001:[r#2,SET-t#1,SET]
+----
+L2:
+  000003:[b#1,SET-c#2,SET] seqnums:[#0-#0] points:[b#1,SET-c#2,SET]
+  000004:[d#3,SET-f#4,SET] seqnums:[#0-#0] points:[d#3,SET-f#4,SET]
+  000005:[h#3,SET-h#2,SET] seqnums:[#0-#0] points:[h#3,SET-h#2,SET]
+  000002:[n#5,SET-q#3,SET] seqnums:[#0-#0] points:[n#5,SET-q#3,SET]
+  000001:[r#2,SET-t#1,SET] seqnums:[#0-#0] points:[r#2,SET-t#1,SET]
+
+apply v3
+  del-table: L2 000004
+  del-table: L2 000001
+  add-table: L2 000006:[a#10,SET-a#7,SET]
+  add-table: L2 000007:[e#1,SET-g#2,SET]
+  add-table: L2 000010:[j#3,SET-m#2,SET]
+----
+L2:
+  000006:[a#10,SET-a#7,SET] seqnums:[#0-#0] points:[a#10,SET-a#7,SET]
+  000003:[b#1,SET-c#2,SET] seqnums:[#0-#0] points:[b#1,SET-c#2,SET]
+  000007:[e#1,SET-g#2,SET] seqnums:[#0-#0] points:[e#1,SET-g#2,SET]
+  000005:[h#3,SET-h#2,SET] seqnums:[#0-#0] points:[h#3,SET-h#2,SET]
+  000010:[j#3,SET-m#2,SET] seqnums:[#0-#0] points:[j#3,SET-m#2,SET]
+  000002:[n#5,SET-q#3,SET] seqnums:[#0-#0] points:[n#5,SET-q#3,SET]
+
+define v4
+L0:
+  000001:[a#1,SET-b#2,SET]
+L1:
+  000002:[c#3,SET-d#2,SET]
+----
+L0.0:
+  000001:[a#1,SET-b#2,SET] seqnums:[#0-#0] points:[a#1,SET-b#2,SET]
+L1:
+  000002:[c#3,SET-d#2,SET] seqnums:[#0-#0] points:[c#3,SET-d#2,SET]
+
+apply v4
+  del-table: L0 000001
+  del-table: L1 000002
+----
+
+# Deletion of a non-existent table results in an error.
+apply v4
+  del-table: L0 000004
+----
+error during Accumulate: pebble: file deleted L0.000004 before it was inserted
+
+define v5
+L0:
+  000001:[a#1,SET-b#2,SET]
+----
+L0.0:
+  000001:[a#1,SET-b#2,SET] seqnums:[#0-#0] points:[a#1,SET-b#2,SET]
+
+apply v5
+  del-table: L0 1
+  add-table: L2 000001:[a#1,SET-b#2,SET]
+  add-table: L2 000004:[c#3,SET-d#4,SET]
+  add-table: L2 000005:[s#3,SET-z#4,SET]
+new version edit
+  del-table: L2 000001
+  del-table: L2 000004
+----
+L2:
+  000005:[s#3,SET-z#4,SET] seqnums:[#0-#0] points:[s#3,SET-z#4,SET]
+
+define v6
+L1:
+  000001:[a#2,SET-e#2,SET]
+L2:
+  000002:[c#1,SET-f#1,SET]
+----
+L1:
+  000001:[a#2,SET-e#2,SET] seqnums:[#0-#0] points:[a#2,SET-e#2,SET]
+L2:
+  000002:[c#1,SET-f#1,SET] seqnums:[#0-#0] points:[c#1,SET-f#1,SET]
+
+# Convert a physical table to virtual tables.
+apply v6
+  del-table: L1 000001
+  add-table: L1 000003(000009):[a#2,SET-b#2,SET]
+  add-table: L1 000004(000009):[c#2,SET-e#2,SET]
+  add-backing: 000009
+  excise-op: [b, c] #3
+----
+L1:
+  000003(000009):[a#2,SET-b#2,SET] seqnums:[#0-#0] points:[a#2,SET-b#2,SET]
+  000004(000009):[c#2,SET-e#2,SET] seqnums:[#0-#0] points:[c#2,SET-e#2,SET]
+L2:
+  000002:[c#1,SET-f#1,SET] seqnums:[#0-#0] points:[c#1,SET-f#1,SET]
+
+define v7
+L1:
+  000003(000009):[a#2,SET-b#2,SET] seqnums:[#0-#0] points:[a#2,SET-b#2,SET]
+  000004(000009):[c#2,SET-e#2,SET] seqnums:[#0-#0] points:[c#2,SET-e#2,SET]
+L2:
+  000002:[c#1,SET-f#1,SET] seqnums:[#0-#0] points:[c#1,SET-f#1,SET]
+----
+L1:
+  000003(000009):[a#2,SET-b#2,SET] seqnums:[#0-#0] points:[a#2,SET-b#2,SET]
+  000004(000009):[c#2,SET-e#2,SET] seqnums:[#0-#0] points:[c#2,SET-e#2,SET]
+L2:
+  000002:[c#1,SET-f#1,SET] seqnums:[#0-#0] points:[c#1,SET-f#1,SET]
+
+# Remove virtual tables and their backing.
+apply v7
+  del-table: L1 000003
+  del-table: L1 000004
+  del-backing: 000009
+----
+L2:
+  000002:[c#1,SET-f#1,SET] seqnums:[#0-#0] points:[c#1,SET-f#1,SET]
+
+define v8
+L1:
+  000001:[a#2,SET-e#2,SET]
+L2:
+  000002:[c#1,SET-f#1,SET]
+----
+L1:
+  000001:[a#2,SET-e#2,SET] seqnums:[#0-#0] points:[a#2,SET-e#2,SET]
+L2:
+  000002:[c#1,SET-f#1,SET] seqnums:[#0-#0] points:[c#1,SET-f#1,SET]
+
+# Accumulate should error if we attempt to add a sstable referencing a blob file
+# that is unknown.
+
+apply v8
+  add-table:     L0 000004:[a#9,SET-z#9,DEL] seqnums:[#9-#9] points:[a#9,SET-z#9,DEL] blobrefs:[(B000003: 25935); depth:1]
+----
+pebble: blob file B000003 referenced by L0.000004 not found
+
+# Apply a version edit that introduces a new blob file and a corresponding table
+# that references its entirety.
+
+apply v8 name=v9
+  add-blob-file: B000003 physical:{000003 size:[20535 (20KB)] vals:[25935 (25KB)]}
+  add-table:     L0 000004:[a#9,SET-z#9,DEL] seqnums:[#9-#9] points:[a#9,SET-z#9,DEL] blobrefs:[(B000003: 25935); depth:1]
+----
+L0.0:
+  000004:[a#9,SET-z#9,DEL] seqnums:[#9-#9] points:[a#9,SET-z#9,DEL] blobrefs:[(B000003: 25935); depth:1]
+L1:
+  000001:[a#2,SET-e#2,SET] seqnums:[#0-#0] points:[a#2,SET-e#2,SET]
+L2:
+  000002:[c#1,SET-f#1,SET] seqnums:[#0-#0] points:[c#1,SET-f#1,SET]
+Blob files:
+  B000003 physical:{000003 size:[20535 (20KB)] vals:[25935 (25KB)]}
+
+# Try to add another table referencing the blob file. Since the file is not
+# added in the same version edit, and no referencing table is deleted in the
+# same version edit, accumulate will error.
+
+apply v8
+  add-table:     L0 000005:[a#10,SET-a#10,SET] seqnums:[#10-#10] points:[a#10,SET-a#10,SET] blobrefs:[(B000003: 205); depth:1]
+----
+pebble: blob file B000003 referenced by L0.000005 not found
+
+# We can add new tables referencing the blob file if we delete an existing table
+# with a reference to the file.
+
+apply v9
+  del-table:     L0 000004
+  del-table:     L1 000001
+  add-table:     L1 000005:[a#9,SET-d#9,SET] seqnums:[#0-#9] points:[a#9,SET-d#9,SET] blobrefs:[(B000003: 12205); depth:1]
+  add-table:     L1 000006:[e#2,SET-z#9,SET] seqnums:[#0-#9] points:[e#2,SET-z#9,SET] blobrefs:[(B000003: 14192); depth:1]
+----
+L1:
+  000005:[a#9,SET-d#9,SET] seqnums:[#0-#9] points:[a#9,SET-d#9,SET] blobrefs:[(B000003: 12205); depth:1]
+  000006:[e#2,SET-z#9,SET] seqnums:[#0-#9] points:[e#2,SET-z#9,SET] blobrefs:[(B000003: 14192); depth:1]
+L2:
+  000002:[c#1,SET-f#1,SET] seqnums:[#0-#0] points:[c#1,SET-f#1,SET]
+Blob files:
+  B000003 physical:{000003 size:[20535 (20KB)] vals:[25935 (25KB)]}
+
+# Repeat the above but this time applying the entire lifecycle of a blob file in
+# a single bulk version edit. This simulates a manifest replay during startup.
+
+define v10
+L1:
+  000001:[a#2,SET-e#2,SET]
+L2:
+  000002:[c#1,SET-f#1,SET]
+----
+L1:
+  000001:[a#2,SET-e#2,SET] seqnums:[#0-#0] points:[a#2,SET-e#2,SET]
+L2:
+  000002:[c#1,SET-f#1,SET] seqnums:[#0-#0] points:[c#1,SET-f#1,SET]
+
+apply v10
+  add-blob-file: B000003 physical:{000003 size:[20535 (20KB)] vals:[25935 (25KB)]}
+  add-table:     L0 000004:[a#9,SET-z#9,DEL] seqnums:[#9-#9] points:[a#9,SET-z#9,DEL] blobrefs:[(B000003: 25935); depth:1]
+new version edit
+  del-table:     L0 000004
+  del-table:     L1 000001
+  add-table:     L1 000005:[a#9,SET-d#9,SET] seqnums:[#0-#9] points:[a#9,SET-d#9,SET] blobrefs:[(B000003: 12205); depth:1]
+  add-table:     L1 000006:[e#2,SET-z#9,SET] seqnums:[#0-#9] points:[e#2,SET-z#9,SET] blobrefs:[(B000003: 14192); depth:1]
+new version edit
+  del-table:     L1 000005
+  del-table:     L1 000006
+  del-blob-file: B000003 000003
+----
+L2:
+  000002:[c#1,SET-f#1,SET] seqnums:[#0-#0] points:[c#1,SET-f#1,SET]
+
+# Create a state with two blob files.
+
+apply v10 name=v11
+  add-blob-file: B000003 physical:{000003 size:[20535 (20KB)] vals:[25935 (25KB)]}
+  add-blob-file: B000004 physical:{000004 size:[20535 (20KB)] vals:[25935 (25KB)]}
+  add-table:     L0 000005:[a#9,SET-z#9,DEL] seqnums:[#9-#9] points:[a#9,SET-z#9,DEL] blobrefs:[(B000003: 25935); depth:1]
+  add-table:     L0 000006:[a#9,SET-z#9,DEL] seqnums:[#9-#9] points:[a#9,SET-z#9,DEL] blobrefs:[(B000004: 25935); depth:1]
+----
+L0.1:
+  000006:[a#9,SET-z#9,DEL] seqnums:[#9-#9] points:[a#9,SET-z#9,DEL] blobrefs:[(B000004: 25935); depth:1]
+L0.0:
+  000005:[a#9,SET-z#9,DEL] seqnums:[#9-#9] points:[a#9,SET-z#9,DEL] blobrefs:[(B000003: 25935); depth:1]
+L1:
+  000001:[a#2,SET-e#2,SET] seqnums:[#0-#0] points:[a#2,SET-e#2,SET]
+L2:
+  000002:[c#1,SET-f#1,SET] seqnums:[#0-#0] points:[c#1,SET-f#1,SET]
+Blob files:
+  B000003 physical:{000003 size:[20535 (20KB)] vals:[25935 (25KB)]}
+  B000004 physical:{000004 size:[20535 (20KB)] vals:[25935 (25KB)]}
+
+# Remove both table+blob file pairs but in separate version edits.
+
+apply v11
+  del-table:     L0 000005
+  del-blob-file: B000003 000003
+new version edit
+  del-table:     L0 000006
+  del-blob-file: B000004 000004
+----
+L1:
+  000001:[a#2,SET-e#2,SET] seqnums:[#0-#0] points:[a#2,SET-e#2,SET]
+L2:
+  000002:[c#1,SET-f#1,SET] seqnums:[#0-#0] points:[c#1,SET-f#1,SET]
+
+# Test a version edit that replaces a blob file.
+
+apply v11
+  del-blob-file: B000003 000003
+  add-blob-file: B000003 physical:{000052 size:[10000] vals:[10000]}
+----
+L0.1:
+  000006:[a#9,SET-z#9,DEL] seqnums:[#9-#9] points:[a#9,SET-z#9,DEL] blobrefs:[(B000004: 25935); depth:1]
+L0.0:
+  000005:[a#9,SET-z#9,DEL] seqnums:[#9-#9] points:[a#9,SET-z#9,DEL] blobrefs:[(B000003: 25935); depth:1]
+L1:
+  000001:[a#2,SET-e#2,SET] seqnums:[#0-#0] points:[a#2,SET-e#2,SET]
+L2:
+  000002:[c#1,SET-f#1,SET] seqnums:[#0-#0] points:[c#1,SET-f#1,SET]
+Blob files:
+  B000003 physical:{000052 size:[10000 (9.8KB)] vals:[10000 (9.8KB)]}
+  B000004 physical:{000004 size:[20535 (20KB)] vals:[25935 (25KB)]}
+
+# Regression test: adding two widely-separated files should check ordering
+# across the entire span, not just near the file with the smallest key.
+define v12
+L2:
+  000003:[f#1,SET-g#2,SET]
+----
+L2:
+  000003:[f#1,SET-g#2,SET] seqnums:[#0-#0] points:[f#1,SET-g#2,SET]
+
+# Add files [a-b] and [f-h] to L2. File [f-h] overlaps with existing [f-g].
+# The ordering check must cover the full span of added files to detect this.
+apply v12
+  add-table: L2 000006:[a#10,SET-b#7,SET]
+  add-table: L2 000007:[f#3,SET-h#2,SET]
+----
+pebble: internal error: L2 files 000007 and 000003 have overlapping ranges: [f#3,SET-h#2,SET] vs [f#1,SET-g#2,SET]
+
+# Range key set regions tests.
+
+# Define a version with tables that have range keys (default RangeKeyKinds=AnyRangeKeys).
+define rk1
+L1:
+  000001:[a#1,RANGEKEYSET-d#inf,RANGEKEYSET] seqnums:[#1-#1] points:[a#1,SET-c#1,SET] ranges:[a#1,RANGEKEYSET-d#inf,RANGEKEYSET]
+  000002:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET] seqnums:[#2-#2] points:[e#2,SET-f#2,SET] ranges:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET]
+----
+L1:
+  000001:[a#1,RANGEKEYSET-d#inf,RANGEKEYSET] seqnums:[#1-#1] points:[a#1,SET-c#1,SET] ranges:[a#1,RANGEKEYSET-d#inf,RANGEKEYSET]
+  000002:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET] seqnums:[#2-#2] points:[e#2,SET-f#2,SET] ranges:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET]
+Range key set regions: [a, d)=1 [e, h)=1
+
+# Apply an edit replacing table 1 with another table with a shorter range key span.
+apply rk1 name=rk2
+  add-table: L1 000003:[b#3,RANGEKEYSET-c#inf,RANGEKEYSET] seqnums:[#3-#3] points:[b#3,SET-b#3,SET] ranges:[b#3,RANGEKEYSET-c#inf,RANGEKEYSET]
+  del-table: L1 000001
+----
+L1:
+  000003:[b#3,RANGEKEYSET-c#inf,RANGEKEYSET] seqnums:[#3-#3] points:[b#3,SET-b#3,SET] ranges:[b#3,RANGEKEYSET-c#inf,RANGEKEYSET]
+  000002:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET] seqnums:[#2-#2] points:[e#2,SET-f#2,SET] ranges:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET]
+Range key set regions: [b, c)=1 [e, h)=1
+
+apply rk2
+  del-table: L1 000002
+----
+L1:
+  000003:[b#3,RANGEKEYSET-c#inf,RANGEKEYSET] seqnums:[#3-#3] points:[b#3,SET-b#3,SET] ranges:[b#3,RANGEKEYSET-c#inf,RANGEKEYSET]
+Range key set regions: [b, c)=1
+
+apply rk2
+  del-table: L1 000003
+----
+L1:
+  000002:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET] seqnums:[#2-#2] points:[e#2,SET-f#2,SET] ranges:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET]
+Range key set regions: [e, h)=1
+
+# Tables with no range key sets do NOT contribute to the region tree.
+define rk3
+L1:
+  000001:[a#1,RANGEKEYUNSET-d#inf,RANGEKEYUNSET] seqnums:[#1-#1] points:[a#1,SET-c#1,SET] ranges:[a#1,RANGEKEYUNSET-d#inf,RANGEKEYUNSET];nosets
+  000002:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET] seqnums:[#2-#2] points:[e#2,SET-f#2,SET] ranges:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET]
+----
+L1:
+  000001:[a#1,RANGEKEYUNSET-d#inf,RANGEKEYUNSET] seqnums:[#1-#1] points:[a#1,SET-c#1,SET] ranges:[a#1,RANGEKEYUNSET-d#inf,RANGEKEYUNSET];nosets
+  000002:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET] seqnums:[#2-#2] points:[e#2,SET-f#2,SET] ranges:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET]
+Range key set regions: [e, h)=1
+
+# Adding a table with no range key sets does not affect the region tree.
+apply rk3 name=rk4
+  add-table: L1 000003:[i#3,RANGEKEYUNSET-k#inf,RANGEKEYUNSET] seqnums:[#3-#3] points:[i#3,SET-j#3,SET] ranges:[i#3,RANGEKEYUNSET-k#inf,RANGEKEYUNSET];nosets
+----
+L1:
+  000001:[a#1,RANGEKEYUNSET-d#inf,RANGEKEYUNSET] seqnums:[#1-#1] points:[a#1,SET-c#1,SET] ranges:[a#1,RANGEKEYUNSET-d#inf,RANGEKEYUNSET];nosets
+  000002:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET] seqnums:[#2-#2] points:[e#2,SET-f#2,SET] ranges:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET]
+  000003:[i#3,RANGEKEYUNSET-k#inf,RANGEKEYUNSET] seqnums:[#3-#3] points:[i#3,SET-j#3,SET] ranges:[i#3,RANGEKEYUNSET-k#inf,RANGEKEYUNSET];nosets
+Range key set regions: [e, h)=1
+
+# Removing a table without range key sets does not affect the region tree.
+apply rk4
+  del-table: L1 000001
+----
+L1:
+  000002:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET] seqnums:[#2-#2] points:[e#2,SET-f#2,SET] ranges:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET]
+  000003:[i#3,RANGEKEYUNSET-k#inf,RANGEKEYUNSET] seqnums:[#3-#3] points:[i#3,SET-j#3,SET] ranges:[i#3,RANGEKEYUNSET-k#inf,RANGEKEYUNSET];nosets
+Range key set regions: [e, h)=1
+
+# Replace a table that has range key sets with one that does not; region should disappear.
+apply rk3
+  del-table: L1 000002
+  add-table: L1 000004:[e#4,RANGEKEYUNSET-h#inf,RANGEKEYUNSET] seqnums:[#4-#4] points:[e#4,SET-f#4,SET] ranges:[e#4,RANGEKEYUNSET-h#inf,RANGEKEYUNSET];nosets
+----
+L1:
+  000001:[a#1,RANGEKEYUNSET-d#inf,RANGEKEYUNSET] seqnums:[#1-#1] points:[a#1,SET-c#1,SET] ranges:[a#1,RANGEKEYUNSET-d#inf,RANGEKEYUNSET];nosets
+  000004:[e#4,RANGEKEYUNSET-h#inf,RANGEKEYUNSET] seqnums:[#4-#4] points:[e#4,SET-f#4,SET] ranges:[e#4,RANGEKEYUNSET-h#inf,RANGEKEYUNSET];nosets
+
+# Replace a table without range key sets with one that has them.
+apply rk3
+  del-table: L1 000001
+  add-table: L1 000005:[a#5,RANGEKEYSET-d#inf,RANGEKEYSET] seqnums:[#5-#5] points:[a#5,SET-c#5,SET] ranges:[a#5,RANGEKEYSET-d#inf,RANGEKEYSET]
+----
+L1:
+  000005:[a#5,RANGEKEYSET-d#inf,RANGEKEYSET] seqnums:[#5-#5] points:[a#5,SET-c#5,SET] ranges:[a#5,RANGEKEYSET-d#inf,RANGEKEYSET]
+  000002:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET] seqnums:[#2-#2] points:[e#2,SET-f#2,SET] ranges:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET]
+Range key set regions: [a, d)=1 [e, h)=1
+
+# Add a table that adds overlapping regions.
+apply rk3 name=rk5
+  add-table: L2 000006: [a#2,RANGEKEYSET-u#inf,RANGEKEYSET] seqnums:[#2-#2] ranges:[a#5,RANGEKEYSET-u#inf,RANGEKEYSET]
+----
+L1:
+  000001:[a#1,RANGEKEYUNSET-d#inf,RANGEKEYUNSET] seqnums:[#1-#1] points:[a#1,SET-c#1,SET] ranges:[a#1,RANGEKEYUNSET-d#inf,RANGEKEYUNSET];nosets
+  000002:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET] seqnums:[#2-#2] points:[e#2,SET-f#2,SET] ranges:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET]
+L2:
+  000006:[#0,DEL-u#inf,RANGEKEYSET] seqnums:[#2-#2] ranges:[a#5,RANGEKEYSET-u#inf,RANGEKEYSET]
+Range key set regions: [a, e)=1 [e, h)=2 [h, u)=1
+
+# Add another table that adds overlapping regions.
+apply rk5 name=rk6
+  add-table: L3 000007: [f#1,RANGEKEYSET-z#inf,RANGEKEYSET] seqnums:[#1-#1] ranges:[f#5,RANGEKEYSET-z#inf,RANGEKEYSET]
+----
+L1:
+  000001:[a#1,RANGEKEYUNSET-d#inf,RANGEKEYUNSET] seqnums:[#1-#1] points:[a#1,SET-c#1,SET] ranges:[a#1,RANGEKEYUNSET-d#inf,RANGEKEYUNSET];nosets
+  000002:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET] seqnums:[#2-#2] points:[e#2,SET-f#2,SET] ranges:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET]
+L2:
+  000006:[#0,DEL-u#inf,RANGEKEYSET] seqnums:[#2-#2] ranges:[a#5,RANGEKEYSET-u#inf,RANGEKEYSET]
+L3:
+  000007:[#0,DEL-z#inf,RANGEKEYSET] seqnums:[#1-#1] ranges:[f#5,RANGEKEYSET-z#inf,RANGEKEYSET]
+Range key set regions: [a, e)=1 [e, f)=2 [f, h)=3 [h, u)=2 [u, z)=1
+
+# Remove some tables.
+apply rk6 name=rk7
+  del-table: L1 000001
+  del-table: L3 000007
+----
+L1:
+  000002:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET] seqnums:[#2-#2] points:[e#2,SET-f#2,SET] ranges:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET]
+L2:
+  000006:[#0,DEL-u#inf,RANGEKEYSET] seqnums:[#2-#2] ranges:[a#5,RANGEKEYSET-u#inf,RANGEKEYSET]
+Range key set regions: [a, e)=1 [e, h)=2 [h, u)=1
+
+apply rk7 name=rk8
+  del-table: L2 000006
+----
+L1:
+  000002:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET] seqnums:[#2-#2] points:[e#2,SET-f#2,SET] ranges:[e#2,RANGEKEYSET-h#inf,RANGEKEYSET]
+Range key set regions: [e, h)=1
+
+apply rk8 name=rk9
+  del-table: L1 000002
+----

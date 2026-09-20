@@ -1,0 +1,1205 @@
+# Test a simple sequence of flushes and compactions where all values are
+# separated.
+
+define value-separation=(enabled, min-size=1, max-ref-depth=3, rw-min-age=0, garbage-ratios=1.0:1.0)
+----
+
+batch
+set a 1
+set b 2
+----
+
+compact a-b
+----
+L6:
+  000005:[a#10,SET-b#11,SET] seqnums:[#10-#11] points:[a#10,SET-b#11,SET] size:783 blobrefs:[(B000006: 2); depth:1]
+Blob files:
+  B000006 physical:{000006 size:[92 (92B)] vals:[2 (2B)]}
+
+batch
+set c 3
+set d 4
+----
+
+compact c-d
+----
+L6:
+  000005:[a#10,SET-b#11,SET] seqnums:[#10-#11] points:[a#10,SET-b#11,SET] size:783 blobrefs:[(B000006: 2); depth:1]
+  000008:[c#12,SET-d#13,SET] seqnums:[#12-#13] points:[c#12,SET-d#13,SET] size:783 blobrefs:[(B000009: 2); depth:1]
+Blob files:
+  B000006 physical:{000006 size:[92 (92B)] vals:[2 (2B)]}
+  B000009 physical:{000009 size:[92 (92B)] vals:[2 (2B)]}
+
+
+sstable-properties file=000005
+----
+rocksdb.num.entries: 2
+rocksdb.raw.key.size: 18
+rocksdb.raw.value.size: 2
+rocksdb.deleted.keys: 0
+rocksdb.num.range-deletions: 0
+rocksdb.num.data.blocks: 1
+rocksdb.comparator: leveldb.BytewiseComparator
+rocksdb.data.size: 91
+rocksdb.filter.size: 0
+rocksdb.index.size: 36
+rocksdb.block.based.table.index.type: 0
+pebble.colblk.schema: DefaultKeySchema(leveldb.BytewiseComparator,16)
+rocksdb.merge.operator: pebble.concatenate
+rocksdb.merge.operands: 0
+pebble.num.values.in.blob-files: 2
+rocksdb.property.collectors: [obsolete-key]
+rocksdb.compression: Snappy
+pebble.compression_stats: None:56,Snappy:86/114
+pebble.value-separation.min-size: 1
+obsolete-key: hex:00
+
+
+batch
+set b 5
+set c 6
+----
+
+compact a-d
+----
+L6:
+  000013:[a#0,SET-d#0,SET] seqnums:[#0-#0] points:[a#0,SET-d#0,SET] size:821 blobrefs:[(B000006: 1), (B000012: 2), (B000009: 1); depth:2]
+Blob files:
+  B000006 physical:{000006 size:[92 (92B)] vals:[2 (2B)]}
+  B000009 physical:{000009 size:[92 (92B)] vals:[2 (2B)]}
+  B000012 physical:{000012 size:[92 (92B)] vals:[2 (2B)]}
+
+batch
+del-range a e
+----
+
+compact a-d
+----
+
+# Set up a scenario where there's a L6 sstable with a blob reference depth of 3,
+# and the value separation policy is configured to limit the blob reference
+# depth to 3.
+
+define verbose value-separation=(enabled, min-size=3, max-ref-depth=3, rw-min-age=0s, garbage-ratios=1.0:1.0)
+L6 blob-depth=3
+  a#0,SET:a
+  b#0,SET:blob{fileNum=100002 value=bar}
+  f#0,SET:blob{fileNum=100003 value=foo}
+  k#0,SET:k
+  z#0,SET:blob{fileNum=100004 value=zoo}
+----
+L6:
+  000004:[a#0,SET-z#0,SET] seqnums:[#0-#0] points:[a#0,SET-z#0,SET] size:823 blobrefs:[(B100002: 3), (B100003: 3), (B100004: 3); depth:3]
+Blob files:
+  B100002 physical:{100002 size:[92 (92B)] vals:[3 (3B)]}
+  B100003 physical:{100003 size:[92 (92B)] vals:[3 (3B)]}
+  B100004 physical:{100004 size:[92 (92B)] vals:[3 (3B)]}
+
+batch
+set d hello
+set e world
+----
+
+# Flush should write flushed values to a new blob file.
+
+flush
+----
+L0.0:
+  000006:[d#10,SET-e#11,SET] seqnums:[#10-#11] points:[d#10,SET-e#11,SET] size:782 blobrefs:[(B000007: 10); depth:1]
+L6:
+  000004:[a#0,SET-z#0,SET] seqnums:[#0-#0] points:[a#0,SET-z#0,SET] size:823 blobrefs:[(B100002: 3), (B100003: 3), (B100004: 3); depth:3]
+Blob files:
+  B000007 physical:{000007 size:[100 (100B)] vals:[10 (10B)]}
+  B100002 physical:{100002 size:[92 (92B)] vals:[3 (3B)]}
+  B100003 physical:{100003 size:[92 (92B)] vals:[3 (3B)]}
+  B100004 physical:{100004 size:[92 (92B)] vals:[3 (3B)]}
+
+# Compacting these two sstables should result in writing the values to a new
+# blob file and the removal of the no longer referenced blob files.
+
+compact a-z
+----
+L6:
+  000008:[a#0,SET-z#0,SET] seqnums:[#0-#0] points:[a#0,SET-z#0,SET] size:833 blobrefs:[(B000009: 19); depth:1]
+Blob files:
+  B000009 physical:{000009 size:[112 (112B)] vals:[19 (19B)]}
+
+# Ensure we can read the separated values by iterating over the database.
+
+iter
+first
+next
+next
+next
+next
+next
+next
+----
+a: (a, .)
+b: (bar, .)
+d: (hello, .)
+e: (world, .)
+f: (foo, .)
+k: (k, .)
+z: (zoo, .)
+
+metrics
+----
+----
+LSM                             |    vtables   |   value sep   |        |   ingested   |    amp
+level       size | tables  size |  count  size |  refsz valblk |     in | tables  size |   r     w
+-----------------+--------------+--------------+---------------+--------+--------------+----------
+   L0         0B |      0    0B |      0     0 |     0B     0B |    41B |      0    0B |   0 21.51
+   L6       945B |      1  833B |      0     0 |   112B     0B |   782B |      0    0B |   1  1.21
+-----------------+--------------+--------------+---------------+--------+--------------+----------
+total       945B |      1  833B |      0     0 |   112B     0B |    41B |      0    0B |   1 45.56
+
+COMPACTIONS               |     moved    |     multilevel    |     read     |       written
+level | score    ff   cff | tables  size |   top    in  read | tables  blob | tables  sstsz blobsz
+------+-------------------+--------------+-------------------+--------------+---------------------
+   L0 |     -     0     0 |      0    0B |    0B    0B    0B |     0B    0B |      1   782B   100B
+   L1 |     -     0     0 |      1  782B |    0B    0B    0B |     0B    0B |      0     0B     0B
+   L2 |     -     0     0 |      1  782B |    0B    0B    0B |     0B    0B |      0     0B     0B
+   L3 |     -     0     0 |      1  782B |    0B    0B    0B |     0B    0B |      0     0B     0B
+   L4 |     -     0     0 |      1  782B |    0B    0B    0B |     0B    0B |      0     0B     0B
+   L5 |     -     0     0 |      1  782B |    0B    0B    0B |     0B    0B |      0     0B     0B
+   L6 |     -  0.00  0.00 |      0    0B |    0B    0B    0B |   372B   84B |      1   833B   112B
+------+-------------------+--------------+-------------------+--------------+---------------------
+total |     -     -     - |      5 3.8KB |    0B    0B    0B |   372B   84B |      2  1.6KB   212B
+
+ kind | default  delete  elision  move  read  tomb  rewrite  copy  multi  blob virtual
+count |       1       0        0     5     0     0        0     0      0     0       0
+
+COMMIT PIPELINE
+               wals                |              memtables              |       ingestions
+    files |    written |  overhead |   flushes |       live |     zombie |     total |   flushable
+----------+------------+-----------+-----------+------------+------------+-----------+------------
+   1 (0B) |   30B: 41B |     36.7% |         1 |  1 (256KB) |  1 (256KB) |         0 |      0 (0B)
+
+BLOCK CACHE: 4 entries (1.3KB)
+                 miss rate [percentage of total misses] since start
+level      all     |  background    sstdata       sstval      blobval       filter       index
+-------------------+------------------------------------------------------------------------------
+ n/a   100% [73%]  |  100% [36%]                            100% [4.5%]                100% [32%]
+  L5   100% [9.1%] | 100% [9.1%]
+  L6   100% [18%]  | 100% [9.1%]  100% [4.5%]                                         100% [4.5%]
+-------------------+------------------------------------------------------------------------------
+total     100%     |  100% [55%]  100% [4.5%]               100% [4.5%]                100% [36%]
+
+ITERATORS
+        file cache        |    filter   |    open     |    open
+     entries |   hit rate | utilization |  sst iters  |  snapshots
+-------------+------------+-------------+-------------+------------
+    1 (424B) |      91.1% |        0.0% |           0 |           0
+
+FILES                 physical tables                 |                blob files
+          |     local        shared        remote     |     local        shared        remote
+----------+-------------------------------------------+------------------------------------------
+     live |   1 (833B)       0 (0B)        0 (0B)     |   1 (112B)       0 (0B)        0 (0B)
+   zombie |    0 (0B)        0 (0B)        0 (0B)     |    0 (0B)        0 (0B)        0 (0B)
+ obsolete |    0 (0B)        0 (0B)        0 (0B)     |    0 (0B)        0 (0B)        0 (0B)
+
+MISC            |
+----------------+-----------
+table stats     | all loaded
+table garbage   |
+  point del     | 0B
+  range del     | 0B
+blob values     |
+  total         | 19B
+  refed         | 19B (100%)
+  backing-refed | 19B (100%)
+
+CGO MEMORY    |          block cache           |                     memtables
+          tot |           tot |           data |            maps |            ents |           tot
+--------------+---------------+----------------+-----------------+-----------------+--------------
+           0B |            0B |             0B |              0B |              0B |            0B
+
+COMPACTIONS
+                                                                         |      blob rewrites
+    est. debt |   in progress |  cancelled |   failed |    problem spans |       read |    written
+--------------+---------------+------------+----------+------------------+------------+-----------
+           0B |        0 (0B) |     0 (0B) |        0 |                0 |         0B |         0B
+
+KEYS
+      range keys |       tombstones |      missized tombstones |      point dels |      range dels
+-----------------+------------------+--------------------------+-----------------+----------------
+               0 |                0 |                        0 |              0B |              0B
+
+COMPRESSION
+    algorithm |         tables |    blob files
+--------------+----------------+--------------
+         none |            56B |           64B
+       snappy | 134B (CR=1.15) |
+
+        Logical bytes compressed / decompressed
+level |  data blocks   |  value blocks  |  other blocks
+------+----------------+----------------+---------------
+L0-L4 |  252B / 2.2KB  |    0B / 0B     |  1.4KB / 2KB
+   L5 |   0B / 228B    |    0B / 0B     |    0B / 0B
+   L6 |  154B / 1.2KB  |    0B / 0B     |   718B / 0B
+
+DELETE PACER   |   in queue   |   deleted
+---------------+--------------+-------------
+        tables |    0 (0B)    |    0 (0B)
+    blob files |    0 (0B)    |    0 (0B)
+   other files |    0 (0B)    |    0 (0B)
+----
+----
+
+# Set the minimum size for a separated value to 5.
+
+define value-separation=(enabled, min-size=5, max-ref-depth=3, rw-min-age=0s, garbage-ratios=1.0:1.0)
+----
+
+batch
+set bar bar
+set foo foo
+set fuzz fuzz
+set yaya yaya
+----
+
+# The flush should not write a blob file because none of the keys have a
+# sufficiently long value to be separated.
+
+flush
+----
+L0.0:
+  000005:[bar#10,SET-yaya#13,SET] seqnums:[#10-#13] points:[bar#10,SET-yaya#13,SET] size:713
+
+batch
+set a a
+set b b
+set h hello
+set w world
+----
+
+# This flush *should* write a blob file, containing 2 values: "hello" and
+# "world" totaling 10 bytes of logical values.
+
+flush
+----
+L0.1:
+  000007:[a#14,SET-w#17,SET] seqnums:[#14-#17] points:[a#14,SET-w#17,SET] size:811 blobrefs:[(B000008: 10); depth:1]
+L0.0:
+  000005:[bar#10,SET-yaya#13,SET] seqnums:[#10-#13] points:[bar#10,SET-yaya#13,SET] size:713
+Blob files:
+  B000008 physical:{000008 size:[100 (100B)] vals:[10 (10B)]}
+
+get
+a
+b
+h
+w
+----
+a:a
+b:b
+h:hello
+w:world
+
+# Configure the database to require keys in the range [a,m) to be in-place.
+
+define required-in-place=(a,m) value-separation=(enabled, min-size=1, max-ref-depth=3, rw-min-age=0s, garbage-ratios=1.0:1.0)
+----
+
+batch
+set a apple
+set b banana
+set c coconut
+set d dragonfruit
+set m mango
+----
+
+# The flush should write two sst files, and only "mango" should be separated. This
+# should be reflected in the 5-byte value bytes of the blob file and the table's
+# blob reference value size.
+
+flush
+----
+L0.0:
+  000005:[a#10,SET-d#13,SET] seqnums:[#10-#13] points:[a#10,SET-d#13,SET] size:704
+  000006:[m#14,SET-m#14,SET] seqnums:[#14-#14] points:[m#14,SET-m#14,SET] size:779 blobrefs:[(B000007: 5); depth:1]
+Blob files:
+  B000007 physical:{000007 size:[94 (94B)] vals:[5 (5B)]}
+
+# Construct an initial state with two overlapping files in L0, both with blob
+# references. Because these files overlap and are in separate sublevels, a
+# compaction that preserves blob references should sum their depths.
+
+define value-separation=(enabled, min-size=1, max-ref-depth=5, rw-min-age=0s, garbage-ratios=1.0:1.0) l0-compaction-threshold=2
+L0 blob-depth=1
+  a#9,SET:a
+  d#9,SET:blob{fileNum=100001 value=d}
+L0 blob-depth=3
+  a#1,SET:a
+  b#1,SET:blob{fileNum=100002 value=bar}
+  f#1,SET:blob{fileNum=100003 value=foo}
+  k#1,SET:k
+  z#1,SET:blob{fileNum=100004 value=zoo}
+----
+L0.1:
+  000004:[a#9,SET-d#9,SET] seqnums:[#9-#9] points:[a#9,SET-d#9,SET] size:792 blobrefs:[(B100001: 1); depth:1]
+L0.0:
+  000005:[a#1,SET-z#1,SET] seqnums:[#1-#1] points:[a#1,SET-z#1,SET] size:823 blobrefs:[(B100002: 3), (B100003: 3), (B100004: 3); depth:3]
+Blob files:
+  B100001 physical:{100001 size:[90 (90B)] vals:[1 (1B)]}
+  B100002 physical:{100002 size:[92 (92B)] vals:[3 (3B)]}
+  B100003 physical:{100003 size:[92 (92B)] vals:[3 (3B)]}
+  B100004 physical:{100004 size:[92 (92B)] vals:[3 (3B)]}
+
+compact a-z
+----
+L1:
+  000006:[a#0,SET-z#0,SET] seqnums:[#0-#0] points:[a#0,SET-z#0,SET] size:842 blobrefs:[(B100002: 3), (B100001: 1), (B100003: 3), (B100004: 3); depth:4]
+Blob files:
+  B100001 physical:{100001 size:[90 (90B)] vals:[1 (1B)]}
+  B100002 physical:{100002 size:[92 (92B)] vals:[3 (3B)]}
+  B100003 physical:{100003 size:[92 (92B)] vals:[3 (3B)]}
+  B100004 physical:{100004 size:[92 (92B)] vals:[3 (3B)]}
+
+# Preserving blob references should mean that value separation
+# props are carried over to the new file.
+sstable-properties file=000006
+----
+rocksdb.num.entries: 6
+rocksdb.raw.key.size: 54
+rocksdb.raw.value.size: 12
+rocksdb.deleted.keys: 0
+rocksdb.num.range-deletions: 0
+rocksdb.num.data.blocks: 1
+rocksdb.comparator: leveldb.BytewiseComparator
+rocksdb.data.size: 143
+rocksdb.filter.size: 0
+rocksdb.index.size: 36
+rocksdb.block.based.table.index.type: 0
+pebble.colblk.schema: DefaultKeySchema(leveldb.BytewiseComparator,16)
+rocksdb.merge.operator: pebble.concatenate
+rocksdb.merge.operands: 0
+pebble.num.values.in.blob-files: 4
+rocksdb.property.collectors: [obsolete-key]
+rocksdb.compression: Snappy
+pebble.compression_stats: None:209
+pebble.value-separation.min-size: 1
+obsolete-key: hex:00
+
+# Construct an initial state with two non-overlapping files in L0, both with
+# blob references. Because these files do NOT overlap and are in the same
+# sublevel, a compaction that preserves blob references should take the MAX of
+# their depths.
+
+define value-separation=(enabled, min-size=1, max-ref-depth=5, rw-min-age=0s, garbage-ratios=1.0:1.0) l0-compaction-threshold=2
+L0 blob-depth=1
+  a#9,SET:a
+  d#9,SET:blob{fileNum=100001 value=d}
+L0 blob-depth=3
+  e#1,SET:a
+  f#1,SET:blob{fileNum=100002 value=bar}
+  g#1,SET:blob{fileNum=100003 value=foo}
+  k#1,SET:k
+  z#1,SET:blob{fileNum=100004 value=zoo}
+----
+L0.0:
+  000004:[a#9,SET-d#9,SET] seqnums:[#9-#9] points:[a#9,SET-d#9,SET] size:792 blobrefs:[(B100001: 1); depth:1]
+  000005:[e#1,SET-z#1,SET] seqnums:[#1-#1] points:[e#1,SET-z#1,SET] size:823 blobrefs:[(B100002: 3), (B100003: 3), (B100004: 3); depth:3]
+Blob files:
+  B100001 physical:{100001 size:[90 (90B)] vals:[1 (1B)]}
+  B100002 physical:{100002 size:[92 (92B)] vals:[3 (3B)]}
+  B100003 physical:{100003 size:[92 (92B)] vals:[3 (3B)]}
+  B100004 physical:{100004 size:[92 (92B)] vals:[3 (3B)]}
+
+compact a-z
+----
+L1:
+  000006:[a#0,SET-z#0,SET] seqnums:[#0-#0] points:[a#0,SET-z#0,SET] size:846 blobrefs:[(B100001: 1), (B100002: 3), (B100003: 3), (B100004: 3); depth:3]
+Blob files:
+  B100001 physical:{100001 size:[90 (90B)] vals:[1 (1B)]}
+  B100002 physical:{100002 size:[92 (92B)] vals:[3 (3B)]}
+  B100003 physical:{100003 size:[92 (92B)] vals:[3 (3B)]}
+  B100004 physical:{100004 size:[92 (92B)] vals:[3 (3B)]}
+
+
+# Configure a database with a minimum rewrite age of 0s (no delay) and a target
+# garbage ratio of 0.0 (no garbage). With this configuration, any blob file that
+# contains any unreferenced values should be immediately compacted.
+
+define value-separation=(enabled, min-size=1, max-ref-depth=2, rw-min-age=0s, garbage-ratios=0.0:0.0) auto-compactions=off
+----
+
+batch
+set a apple
+set b banana
+set c coconut
+set d dragonfruit
+set e elderberry
+set f fig
+set g grapefruit
+set h honeydew
+----
+
+flush
+----
+L0.0:
+  000005:[a#10,SET-h#17,SET] seqnums:[#10-#17] points:[a#10,SET-h#17,SET] size:856 blobrefs:[(B000006: 60); depth:1]
+Blob files:
+  B000006 physical:{000006 size:[156 (156B)] vals:[60 (60B)]}
+
+# Overwrite the value of the key 'c'.
+
+batch
+set c cherry
+----
+
+flush
+----
+L0.1:
+  000008:[c#18,SET-c#18,SET] seqnums:[#18-#18] points:[c#18,SET-c#18,SET] size:779 blobrefs:[(B000009: 6); depth:1]
+L0.0:
+  000005:[a#10,SET-h#17,SET] seqnums:[#10-#17] points:[a#10,SET-h#17,SET] size:856 blobrefs:[(B000006: 60); depth:1]
+Blob files:
+  B000006 physical:{000006 size:[156 (156B)] vals:[60 (60B)]}
+  B000009 physical:{000009 size:[95 (95B)] vals:[6 (6B)]}
+
+# Compacting the two sstables will result in 'coconut' in the first blob file
+# becoming unreferenced.
+
+compact a-b
+----
+L6:
+  000010:[a#0,SET-h#0,SET] seqnums:[#0-#0] points:[a#0,SET-h#0,SET] size:834 blobrefs:[(B000006: 53), (B000009: 6); depth:2]
+Blob files:
+  B000006 physical:{000006 size:[156 (156B)] vals:[60 (60B)]}
+  B000009 physical:{000009 size:[95 (95B)] vals:[6 (6B)]}
+
+auto-compact
+----
+L6:
+  000010:[a#0,SET-h#0,SET] seqnums:[#0-#0] points:[a#0,SET-h#0,SET] size:834 blobrefs:[(B000006: 53), (B000009: 6); depth:2]
+Blob files:
+  B000006 physical:{000011 size:[150 (150B)] vals:[53 (53B)]}
+  B000009 physical:{000009 size:[95 (95B)] vals:[6 (6B)]}
+
+metrics
+----
+----
+LSM                             |    vtables   |   value sep   |        |   ingested   |    amp
+level       size | tables  size |  count  size |  refsz valblk |     in | tables  size |   r     w
+-----------------+--------------+--------------+---------------+--------+--------------+----------
+   L0         0B |      0    0B |      0     0 |     0B     0B |   156B |      0    0B |   0 12.09
+   L6        1KB |      1  834B |      0     0 |   232B     0B |  1.6KB |      0    0B |   1  0.51
+-----------------+--------------+--------------+---------------+--------+--------------+----------
+total        1KB |      1  834B |      0     0 |   232B     0B |   156B |      0    0B |   1 18.44
+
+COMPACTIONS               |     moved    |     multilevel    |     read     |       written
+level | score    ff   cff | tables  size |   top    in  read | tables  blob | tables  sstsz blobsz
+------+-------------------+--------------+-------------------+--------------+---------------------
+   L0 |     -     0     0 |      0    0B |    0B    0B    0B |     0B    0B |      2  1.6KB   251B
+   L6 |     -  0.00  0.00 |      0    0B |    0B    0B    0B |   310B    0B |      1   834B     0B
+------+-------------------+--------------+-------------------+--------------+---------------------
+total |     -     -     - |      0    0B |    0B    0B    0B |   310B    0B |      3  2.6KB   251B
+
+ kind | default  delete  elision  move  read  tomb  rewrite  copy  multi  blob virtual
+count |       1       0        0     0     0     0        0     0      0     1       0
+
+COMMIT PIPELINE
+               wals                |              memtables              |       ingestions
+    files |    written |  overhead |   flushes |       live |     zombie |     total |   flushable
+----------+------------+-----------+-----------+------------+------------+-----------+------------
+   1 (0B) | 126B: 156B |     23.8% |         2 |  1 (256KB) |  1 (256KB) |         0 |      0 (0B)
+
+BLOCK CACHE: 0 entries (0B)
+                 miss rate [percentage of total misses] since start
+level      all     |  background    sstdata       sstval      blobval       filter       index
+-------------------+------------------------------------------------------------------------------
+ n/a   100% [69%]  |  100% [23%]                                                       100% [46%]
+  L0   100% [31%]  |  100% [31%]
+-------------------+------------------------------------------------------------------------------
+total     100%     |  100% [54%]                                                       100% [46%]
+
+ITERATORS
+        file cache        |    filter   |    open     |    open
+     entries |   hit rate | utilization |  sst iters  |  snapshots
+-------------+------------+-------------+-------------+------------
+    1 (544B) |      81.8% |        0.0% |           0 |           0
+
+FILES                 physical tables                 |                blob files
+          |     local        shared        remote     |     local        shared        remote
+----------+-------------------------------------------+------------------------------------------
+     live |   1 (834B)       0 (0B)        0 (0B)     |   2 (245B)       0 (0B)        0 (0B)
+   zombie |    0 (0B)        0 (0B)        0 (0B)     |    0 (0B)        0 (0B)        0 (0B)
+ obsolete |    0 (0B)        0 (0B)        0 (0B)     |    0 (0B)        0 (0B)        0 (0B)
+
+MISC            |
+----------------+-----------
+table stats     | all loaded
+table garbage   |
+  point del     | 0B
+  range del     | 0B
+blob values     |
+  total         | 59B
+  refed         | 59B (100%)
+  backing-refed | 59B (100%)
+
+CGO MEMORY    |          block cache           |                     memtables
+          tot |           tot |           data |            maps |            ents |           tot
+--------------+---------------+----------------+-----------------+-----------------+--------------
+           0B |            0B |             0B |              0B |              0B |            0B
+
+COMPACTIONS
+                                                                         |      blob rewrites
+    est. debt |   in progress |  cancelled |   failed |    problem spans |       read |    written
+--------------+---------------+------------+----------+------------------+------------+-----------
+           0B |        0 (0B) |     0 (0B) |        0 |                0 |        83B |       150B
+
+KEYS
+      range keys |       tombstones |      missized tombstones |      point dels |      range dels
+-----------------+------------------+--------------------------+-----------------+----------------
+               0 |                0 |                        0 |              0B |              0B
+
+COMPRESSION
+    algorithm |         tables |    blob files
+--------------+----------------+--------------
+         none |            61B |          149B
+       snappy | 130B (CR=1.31) |
+
+        Logical bytes compressed / decompressed
+level |  data blocks   |  value blocks  |  other blocks
+------+----------------+----------------+---------------
+L0-L4 |  292B / 1.5KB  |    0B / 0B     |  1.4KB / 2KB
+   L6 |  170B / 340B   |    0B / 0B     |   718B / 0B
+
+DELETE PACER   |   in queue   |   deleted
+---------------+--------------+-------------
+        tables |    0 (0B)    |    0 (0B)
+    blob files |    0 (0B)    |    0 (0B)
+   other files |    0 (0B)    |    0 (0B)
+----
+----
+
+# Test a blob file rewrite compaction with virtual sstable references.
+
+define value-separation=(enabled, min-size=1, max-ref-depth=10, rw-min-age=0s, garbage-ratios=0.01:0.01)
+----
+
+batch
+set a apple
+set b banana
+set c coconut
+----
+
+compact a-b
+----
+L6:
+  000005:[a#10,SET-c#12,SET] seqnums:[#10-#12] points:[a#10,SET-c#12,SET] size:796 blobrefs:[(B000006: 18); depth:1]
+Blob files:
+  B000006 physical:{000006 size:[109 (109B)] vals:[18 (18B)]}
+
+excise b ba
+----
+L6:
+  000007(000005):[a#10,SET-a#10,SET] seqnums:[#10-#12] points:[a#10,SET-a#10,SET] size:104(796) blobrefs:[(B000006: 2); depth:1]
+  000008(000005):[c#12,SET-c#12,SET] seqnums:[#10-#12] points:[c#12,SET-c#12,SET] size:104(796) blobrefs:[(B000006: 2); depth:1]
+Blob files:
+  B000006 physical:{000006 size:[109 (109B)] vals:[18 (18B)]}
+
+# Attempt to run a blob-rewrite compaction. We won't be able to guarantee that a
+# rewrite would reclaim disk space because of the virtual table's reference
+# (also, in reality it wouldn't), so we won't schedule the compaction.
+
+run-blob-rewrite-compaction
+----
+no blob file rewrite compaction
+
+validate-blob-reference-index-block
+000007.sst
+000008.sst
+----
+validated
+
+define value-separation=(enabled, min-size=5, max-ref-depth=5, rw-min-age=0s, garbage-ratios=1.0:1.0) l0-compaction-threshold=1 target-file-sizes=65536 memtable-size=10000000
+----
+
+# Test writing a non-trivial amount of data. With a key length of 4, we'll write
+# 18278 keys each with a 64-byte value, totalling ~1MB of value data.
+
+populate keylen=3 timestamps=(1) vallen=64
+----
+wrote 18278 keys
+
+# Flush the memtable. The resulting L0 sstables should be relatively small, but
+# when their sizes are summed with their corresponding blob files, the sum
+# should be around the target file size of 64KB.
+
+flush
+----
+L0.0:
+  000006:[a@1#10,SET-bdm@1#808,SET] seqnums:[#10-#808] points:[a@1#10,SET-bdm@1#808,SET] size:13111 blobrefs:[(B000007: 51136); depth:1]
+  000008:[bdn@1#809,SET-cha@1#1607,SET] seqnums:[#809-#1607] points:[bdn@1#809,SET-cha@1#1607,SET] size:13111 blobrefs:[(B000009: 51136); depth:1]
+  000010:[chb@1#1608,SET-dkp@1#2406,SET] seqnums:[#1608-#2406] points:[chb@1#1608,SET-dkp@1#2406,SET] size:13095 blobrefs:[(B000011: 51136); depth:1]
+  000012:[dkq@1#2407,SET-eod@1#3205,SET] seqnums:[#2407-#3205] points:[dkq@1#2407,SET-eod@1#3205,SET] size:13119 blobrefs:[(B000013: 51136); depth:1]
+  000014:[eoe@1#3206,SET-frs@1#4004,SET] seqnums:[#3206-#4004] points:[eoe@1#3206,SET-frs@1#4004,SET] size:13095 blobrefs:[(B000015: 51136); depth:1]
+  000016:[frt@1#4005,SET-gvg@1#4803,SET] seqnums:[#4005-#4803] points:[frt@1#4005,SET-gvg@1#4803,SET] size:13111 blobrefs:[(B000017: 51136); depth:1]
+  000018:[gvh@1#4804,SET-hyv@1#5602,SET] seqnums:[#4804-#5602] points:[gvh@1#4804,SET-hyv@1#5602,SET] size:13103 blobrefs:[(B000019: 51136); depth:1]
+  000020:[hyw@1#5603,SET-jci@1#6401,SET] seqnums:[#5603-#6401] points:[hyw@1#5603,SET-jci@1#6401,SET] size:13135 blobrefs:[(B000021: 51136); depth:1]
+  000022:[jcj@1#6402,SET-kfy@1#7201,SET] seqnums:[#6402-#7201] points:[jcj@1#6402,SET-kfy@1#7201,SET] size:13095 blobrefs:[(B000023: 51200); depth:1]
+  000024:[kfz@1#7202,SET-ljm@1#8000,SET] seqnums:[#7202-#8000] points:[kfz@1#7202,SET-ljm@1#8000,SET] size:13095 blobrefs:[(B000025: 51136); depth:1]
+  000026:[ljn@1#8001,SET-mnb@1#8800,SET] seqnums:[#8001-#8800] points:[ljn@1#8001,SET-mnb@1#8800,SET] size:13103 blobrefs:[(B000027: 51200); depth:1]
+  000028:[mnc@1#8801,SET-nqr@1#9600,SET] seqnums:[#8801-#9600] points:[mnc@1#8801,SET-nqr@1#9600,SET] size:13087 blobrefs:[(B000029: 51200); depth:1]
+  000030:[nqs@1#9601,SET-ouf@1#10399,SET] seqnums:[#9601-#10399] points:[nqs@1#9601,SET-ouf@1#10399,SET] size:13095 blobrefs:[(B000031: 51136); depth:1]
+  000032:[oug@1#10400,SET-pxv@1#11199,SET] seqnums:[#10400-#11199] points:[oug@1#10400,SET-pxv@1#11199,SET] size:13095 blobrefs:[(B000033: 51200); depth:1]
+  000034:[pxw@1#11200,SET-rbi@1#11998,SET] seqnums:[#11200-#11998] points:[pxw@1#11200,SET-rbi@1#11998,SET] size:13135 blobrefs:[(B000035: 51136); depth:1]
+  000036:[rbj@1#11999,SET-sey@1#12798,SET] seqnums:[#11999-#12798] points:[rbj@1#11999,SET-sey@1#12798,SET] size:13095 blobrefs:[(B000037: 51200); depth:1]
+  000038:[sez@1#12799,SET-tim@1#13597,SET] seqnums:[#12799-#13597] points:[sez@1#12799,SET-tim@1#13597,SET] size:13095 blobrefs:[(B000039: 51136); depth:1]
+  000040:[tin@1#13598,SET-umb@1#14397,SET] seqnums:[#13598-#14397] points:[tin@1#13598,SET-umb@1#14397,SET] size:13103 blobrefs:[(B000041: 51200); depth:1]
+  000042:[umc@1#14398,SET-vpr@1#15197,SET] seqnums:[#14398-#15197] points:[umc@1#14398,SET-vpr@1#15197,SET] size:13087 blobrefs:[(B000043: 51200); depth:1]
+  000044:[vps@1#15198,SET-wtf@1#15996,SET] seqnums:[#15198-#15996] points:[vps@1#15198,SET-wtf@1#15996,SET] size:13103 blobrefs:[(B000045: 51136); depth:1]
+  000046:[wtg@1#15997,SET-xwv@1#16796,SET] seqnums:[#15997-#16796] points:[wtg@1#15997,SET-xwv@1#16796,SET] size:13095 blobrefs:[(B000047: 51200); depth:1]
+  000048:[xww@1#16797,SET-zai@1#17595,SET] seqnums:[#16797-#17595] points:[xww@1#16797,SET-zai@1#17595,SET] size:13119 blobrefs:[(B000049: 51136); depth:1]
+  000050:[zaj@1#17596,SET-zzz@1#18287,SET] seqnums:[#17596-#18287] points:[zaj@1#17596,SET-zzz@1#18287,SET] size:11420 blobrefs:[(B000051: 44288); depth:1]
+Blob files:
+  B000007 physical:{000007 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000009 physical:{000009 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000011 physical:{000011 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000013 physical:{000013 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000015 physical:{000015 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000017 physical:{000017 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000019 physical:{000019 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000021 physical:{000021 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000023 physical:{000023 size:[53204 (52KB)] vals:[51200 (50KB)]}
+  B000025 physical:{000025 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000027 physical:{000027 size:[53204 (52KB)] vals:[51200 (50KB)]}
+  B000029 physical:{000029 size:[53204 (52KB)] vals:[51200 (50KB)]}
+  B000031 physical:{000031 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000033 physical:{000033 size:[53204 (52KB)] vals:[51200 (50KB)]}
+  B000035 physical:{000035 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000037 physical:{000037 size:[53204 (52KB)] vals:[51200 (50KB)]}
+  B000039 physical:{000039 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000041 physical:{000041 size:[53204 (52KB)] vals:[51200 (50KB)]}
+  B000043 physical:{000043 size:[53204 (52KB)] vals:[51200 (50KB)]}
+  B000045 physical:{000045 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000047 physical:{000047 size:[53204 (52KB)] vals:[51200 (50KB)]}
+  B000049 physical:{000049 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000051 physical:{000051 size:[46028 (45KB)] vals:[44288 (43KB)]}
+
+# Manual compaction of key range so we merge files instead of moving.
+# This compaction should write data to L6. The resulting sstables will
+# reference multiple blob files but maintain a blob reference depth of 1
+# because L6 has no referenced blob files and all the L0
+# input tables have a reference depth of 1.
+
+compact a-zzzz
+----
+L6:
+  000052:[a@1#0,SET-ckw@1#0,SET] seqnums:[#0-#0] points:[a@1#0,SET-ckw@1#0,SET] size:23102 blobrefs:[(B000007: 51136), (B000009: 51136), (B000011: 6592); depth:1]
+  000053:[ckx@1#0,SET-ewd@1#0,SET] seqnums:[#0-#0] points:[ckx@1#0,SET-ewd@1#0,SET] size:22438 blobrefs:[(B000011: 44544), (B000013: 51136), (B000015: 13824); depth:1]
+  000054:[ewe@1#0,SET-hgu@1#0,SET] seqnums:[#0-#0] points:[ewe@1#0,SET-hgu@1#0,SET] size:23225 blobrefs:[(B000015: 37312), (B000017: 51136), (B000019: 19968); depth:1]
+  000055:[hgv@1#0,SET-js@1#0,SET] seqnums:[#0-#0] points:[hgv@1#0,SET-js@1#0,SET] size:22564 blobrefs:[(B000019: 31168), (B000021: 51136), (B000023: 27072); depth:1]
+  000056:[jsa@1#0,SET-mcx@1#0,SET] seqnums:[#0-#0] points:[jsa@1#0,SET-mcx@1#0,SET] size:23096 blobrefs:[(B000023: 24128), (B000025: 51136), (B000027: 33600); depth:1]
+  000057:[mcy@1#0,SET-onw@1#0,SET] seqnums:[#0-#0] points:[mcy@1#0,SET-onw@1#0,SET] size:23043 blobrefs:[(B000027: 17600), (B000029: 51200), (B000031: 40128); depth:1]
+  000058:[onx@1#0,SET-qyv@1#0,SET] seqnums:[#0-#0] points:[onx@1#0,SET-qyv@1#0,SET] size:23002 blobrefs:[(B000031: 11008), (B000033: 51200), (B000035: 46720); depth:1]
+  000059:[qyw@1#0,SET-tjs@1#0,SET] seqnums:[#0-#0] points:[qyw@1#0,SET-tjs@1#0,SET] size:23114 blobrefs:[(B000035: 4416), (B000037: 51200), (B000039: 51136), (B000041: 2112); depth:1]
+  000060:[tjt@1#0,SET-vuj@1#0,SET] seqnums:[#0-#0] points:[tjt@1#0,SET-vuj@1#0,SET] size:23522 blobrefs:[(B000041: 49088), (B000043: 51200), (B000045: 8128); depth:1]
+  000061:[vuk@1#0,SET-yez@1#0,SET] seqnums:[#0-#0] points:[vuk@1#0,SET-yez@1#0,SET] size:23539 blobrefs:[(B000045: 43008), (B000047: 51200), (B000049: 14144); depth:1]
+  000062:[yf@1#0,SET-zzz@1#0,SET] seqnums:[#0-#0] points:[yf@1#0,SET-zzz@1#0,SET] size:17782 blobrefs:[(B000049: 36992), (B000051: 44288); depth:1]
+Blob files:
+  B000007 physical:{000007 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000009 physical:{000009 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000011 physical:{000011 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000013 physical:{000013 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000015 physical:{000015 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000017 physical:{000017 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000019 physical:{000019 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000021 physical:{000021 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000023 physical:{000023 size:[53204 (52KB)] vals:[51200 (50KB)]}
+  B000025 physical:{000025 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000027 physical:{000027 size:[53204 (52KB)] vals:[51200 (50KB)]}
+  B000029 physical:{000029 size:[53204 (52KB)] vals:[51200 (50KB)]}
+  B000031 physical:{000031 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000033 physical:{000033 size:[53204 (52KB)] vals:[51200 (50KB)]}
+  B000035 physical:{000035 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000037 physical:{000037 size:[53204 (52KB)] vals:[51200 (50KB)]}
+  B000039 physical:{000039 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000041 physical:{000041 size:[53204 (52KB)] vals:[51200 (50KB)]}
+  B000043 physical:{000043 size:[53204 (52KB)] vals:[51200 (50KB)]}
+  B000045 physical:{000045 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000047 physical:{000047 size:[53204 (52KB)] vals:[51200 (50KB)]}
+  B000049 physical:{000049 size:[53138 (52KB)] vals:[51136 (50KB)]}
+  B000051 physical:{000051 size:[46028 (45KB)] vals:[44288 (43KB)]}
+
+
+excise-dryrun b c
+----
+would excise 1 files.
+  del-table:     L6 000052
+  add-table:     L6 000063(000052):[a@1#0,SET-azz@1#0,SET] seqnums:[#0-#0] points:[a@1#0,SET-azz@1#0,SET] size:11748(23102) blobrefs:[(B000007: 26004), (B000009: 26004), (B000011: 3352); depth:1]
+  add-table:     L6 000064(000052):[c@1#0,SET-ckw@1#0,SET] seqnums:[#0-#0] points:[c@1#0,SET-ckw@1#0,SET] size:6302(23102) blobrefs:[(B000007: 13949), (B000009: 13949), (B000011: 1798); depth:1]
+  add-backing:   000052
+
+
+# Test a value separation policy that is configured to only separate values ≥
+# 1024 bytes, but there's also a key span defined with the latency-tolerant
+# value storage policy.
+
+define value-separation=(enabled, min-size=1024, max-ref-depth=10, rw-min-age=0s, garbage-ratios=1.0:1.0) latency-tolerant-span=(f,o)
+----
+
+batch
+set a hello
+set b helloworld
+set c helloworld!
+set d hello
+set e helloworld
+set f helloworld!
+set g hello
+set h helloworld
+set i helloworld!
+set j hello
+set k helloworld
+set l helloworld!
+set m hello
+set n helloworld
+set o helloworld!
+set p hello
+set q helloworld
+set r helloworld!
+set s hello
+set t helloworld
+set u helloworld!
+set v hello
+set w helloworld
+set x helloworld!
+set y hello
+set z helloworld
+----
+
+flush
+----
+L0.0:
+  000005:[a#10,SET-e#14,SET] seqnums:[#10-#14] points:[a#10,SET-e#14,SET] size:740
+  000006:[f#15,SET-n#23,SET] seqnums:[#15-#23] points:[f#15,SET-n#23,SET] size:867 blobrefs:[(B000007: 63); depth:1]
+  000008:[o#24,SET-z#35,SET] seqnums:[#24-#35] points:[o#24,SET-z#35,SET] size:777
+Blob files:
+  B000007 physical:{000007 size:[115 (115B)] vals:[63 (63B)]}
+
+iter
+first
+next
+next
+stats
+next
+next
+next
+stats
+next
+next
+next
+stats
+next
+next
+next
+stats
+next
+next
+next
+stats
+next
+next
+next
+stats
+next
+next
+next
+stats
+next
+next
+next
+stats
+----
+a: (hello, .)
+b: (helloworld, .)
+c: (helloworld!, .)
+stats: seeked 1 times (1 internal); stepped 2 times (2 internal); blocks: 0B cached, 158B not cached (read time: 0s); points: 3 (3B keys, 26B values)
+d: (hello, .)
+e: (helloworld, .)
+f: (helloworld!, .)
+stats: seeked 1 times (1 internal); stepped 5 times (5 internal); blocks: 0B cached, 421B not cached (read time: 0s); points: 6 (6B keys, 43B values); separated: 1 (11B, 11B fetched)
+g: (hello, .)
+h: (helloworld, .)
+i: (helloworld!, .)
+stats: seeked 1 times (1 internal); stepped 8 times (8 internal); blocks: 0B cached, 421B not cached (read time: 0s); points: 9 (9B keys, 52B values); separated: 3 (32B, 32B fetched)
+j: (hello, .)
+k: (helloworld, .)
+l: (helloworld!, .)
+stats: seeked 1 times (1 internal); stepped 11 times (11 internal); blocks: 0B cached, 421B not cached (read time: 0s); points: 12 (12B keys, 61B values); separated: 5 (53B, 53B fetched)
+m: (hello, .)
+n: (helloworld, .)
+o: (helloworld!, .)
+stats: seeked 1 times (1 internal); stepped 14 times (14 internal); blocks: 0B cached, 615B not cached (read time: 0s); points: 15 (15B keys, 79B values); separated: 6 (63B, 63B fetched)
+p: (hello, .)
+q: (helloworld, .)
+r: (helloworld!, .)
+stats: seeked 1 times (1 internal); stepped 17 times (17 internal); blocks: 0B cached, 615B not cached (read time: 0s); points: 18 (18B keys, 105B values); separated: 6 (63B, 63B fetched)
+s: (hello, .)
+t: (helloworld, .)
+u: (helloworld!, .)
+stats: seeked 1 times (1 internal); stepped 20 times (20 internal); blocks: 0B cached, 615B not cached (read time: 0s); points: 21 (21B keys, 131B values); separated: 6 (63B, 63B fetched)
+v: (hello, .)
+w: (helloworld, .)
+x: (helloworld!, .)
+stats: seeked 1 times (1 internal); stepped 23 times (23 internal); blocks: 0B cached, 615B not cached (read time: 0s); points: 24 (24B keys, 157B values); separated: 6 (63B, 63B fetched)
+
+# Value separation for span policy based value separation.
+sstable-properties file=000006
+----
+rocksdb.num.entries: 9
+rocksdb.raw.key.size: 81
+rocksdb.raw.value.size: 78
+rocksdb.deleted.keys: 0
+rocksdb.num.range-deletions: 0
+rocksdb.num.data.blocks: 1
+rocksdb.comparator: leveldb.BytewiseComparator
+rocksdb.data.size: 165
+rocksdb.filter.size: 0
+rocksdb.index.size: 36
+rocksdb.block.based.table.index.type: 0
+pebble.colblk.schema: DefaultKeySchema(leveldb.BytewiseComparator,16)
+rocksdb.merge.operator: pebble.concatenate
+rocksdb.merge.operands: 0
+pebble.num.values.in.blob-files: 6
+rocksdb.property.collectors: [obsolete-key]
+rocksdb.compression: Snappy
+pebble.compression_stats: None:56,Snappy:160/194
+pebble.value-separation.min-size: 10
+obsolete-key: hex:00
+
+batch
+set f helloworld
+set g helloworld!
+----
+
+flush
+----
+L0.1:
+  000010:[f#36,SET-g#37,SET] seqnums:[#36-#37] points:[f#36,SET-g#37,SET] size:783 blobrefs:[(B000011: 21); depth:1]
+L0.0:
+  000005:[a#10,SET-e#14,SET] seqnums:[#10-#14] points:[a#10,SET-e#14,SET] size:740
+  000006:[f#15,SET-n#23,SET] seqnums:[#15-#23] points:[f#15,SET-n#23,SET] size:867 blobrefs:[(B000007: 63); depth:1]
+  000008:[o#24,SET-z#35,SET] seqnums:[#24-#35] points:[o#24,SET-z#35,SET] size:777
+Blob files:
+  B000007 physical:{000007 size:[115 (115B)] vals:[63 (63B)]}
+  B000011 physical:{000011 size:[111 (111B)] vals:[21 (21B)]}
+
+
+# Compacting key range with the same value separation span policy should allow preserving blob references.
+compact f-n
+----
+L0.0:
+  000005:[a#10,SET-e#14,SET] seqnums:[#10-#14] points:[a#10,SET-e#14,SET] size:740
+  000008:[o#24,SET-z#35,SET] seqnums:[#24-#35] points:[o#24,SET-z#35,SET] size:777
+L6:
+  000012:[f#0,SET-n#0,SET] seqnums:[#0-#0] points:[f#0,SET-n#0,SET] size:851 blobrefs:[(B000011: 21), (B000007: 52); depth:2]
+Blob files:
+  B000007 physical:{000007 size:[115 (115B)] vals:[63 (63B)]}
+  B000011 physical:{000011 size:[111 (111B)] vals:[21 (21B)]}
+
+# Compacting key range with a mix of value separation span policies should preserve
+# blob references if the maximum output reference depth is not exceeded and the value
+# separation policies used by all input tables have not changed. Here, we have input tables
+# using either the f-o span policy or the default policy, but we can still preserve blob
+# references because the default policy and span policies have not been reconfigured.
+
+batch
+set f frolicking
+set h holiday
+----
+
+flush
+----
+L0.0:
+  000005:[a#10,SET-e#14,SET] seqnums:[#10-#14] points:[a#10,SET-e#14,SET] size:740
+  000014:[f#38,SET-h#39,SET] seqnums:[#38-#39] points:[f#38,SET-h#39,SET] size:795 blobrefs:[(B000015: 10); depth:1]
+  000008:[o#24,SET-z#35,SET] seqnums:[#24-#35] points:[o#24,SET-z#35,SET] size:777
+L6:
+  000012:[f#0,SET-n#0,SET] seqnums:[#0-#0] points:[f#0,SET-n#0,SET] size:851 blobrefs:[(B000011: 21), (B000007: 52); depth:2]
+Blob files:
+  B000007 physical:{000007 size:[115 (115B)] vals:[63 (63B)]}
+  B000011 physical:{000011 size:[111 (111B)] vals:[21 (21B)]}
+  B000015 physical:{000015 size:[99 (99B)] vals:[10 (10B)]}
+
+compact f-z
+----
+L0.0:
+  000005:[a#10,SET-e#14,SET] seqnums:[#10-#14] points:[a#10,SET-e#14,SET] size:740
+L6:
+  000016:[f#0,SET-n#0,SET] seqnums:[#0-#0] points:[f#0,SET-n#0,SET] size:864 blobrefs:[(B000015: 10), (B000011: 11), (B000007: 42); depth:3]
+  000017:[o#0,SET-z#0,SET] seqnums:[#0-#0] points:[o#0,SET-z#0,SET] size:751
+Blob files:
+  B000007 physical:{000007 size:[115 (115B)] vals:[63 (63B)]}
+  B000011 physical:{000011 size:[111 (111B)] vals:[21 (21B)]}
+  B000015 physical:{000015 size:[99 (99B)] vals:[10 (10B)]}
+
+sstable-properties file=000016
+----
+rocksdb.num.entries: 9
+rocksdb.raw.key.size: 81
+rocksdb.raw.value.size: 80
+rocksdb.deleted.keys: 0
+rocksdb.num.range-deletions: 0
+rocksdb.num.data.blocks: 1
+rocksdb.comparator: leveldb.BytewiseComparator
+rocksdb.data.size: 160
+rocksdb.filter.size: 0
+rocksdb.index.size: 36
+rocksdb.block.based.table.index.type: 0
+pebble.colblk.schema: DefaultKeySchema(leveldb.BytewiseComparator,16)
+rocksdb.merge.operator: pebble.concatenate
+rocksdb.merge.operands: 0
+pebble.num.values.in.blob-files: 6
+rocksdb.property.collectors: [obsolete-key]
+rocksdb.compression: Snappy
+pebble.compression_stats: None:66,Snappy:155/178
+pebble.value-separation.min-size: 10
+obsolete-key: hex:00
+
+sstable-properties file=000017
+----
+rocksdb.num.entries: 12
+rocksdb.raw.key.size: 108
+rocksdb.raw.value.size: 104
+rocksdb.deleted.keys: 0
+rocksdb.num.range-deletions: 0
+rocksdb.num.data.blocks: 1
+rocksdb.comparator: leveldb.BytewiseComparator
+rocksdb.data.size: 137
+rocksdb.filter.size: 0
+rocksdb.index.size: 36
+rocksdb.block.based.table.index.type: 0
+pebble.colblk.schema: DefaultKeySchema(leveldb.BytewiseComparator,16)
+rocksdb.merge.operator: pebble.concatenate
+rocksdb.merge.operands: 0
+rocksdb.property.collectors: [obsolete-key]
+rocksdb.compression: Snappy
+pebble.compression_stats: None:36,Snappy:132/225
+pebble.value-separation.min-size: 1024
+obsolete-key: hex:00
+
+define value-separation=(enabled, min-size=8, max-ref-depth=10, rw-min-age=0s, garbage-ratios=1.0:1.0)
+----
+
+batch
+set foo <rand-bytes=4096>
+----
+
+flush
+----
+L0.0:
+  000005:[foo#10,SET-foo#10,SET] seqnums:[#10-#10] points:[foo#10,SET-foo#10,SET] size:784 blobrefs:[(B000006: 4096); depth:1]
+Blob files:
+  B000006 physical:{000006 size:[4190 (4.1KB)] vals:[4096 (4.0KB)]}
+
+compact a-z
+----
+L6:
+  000005:[foo#10,SET-foo#10,SET] seqnums:[#10-#10] points:[foo#10,SET-foo#10,SET] size:784 blobrefs:[(B000006: 4096); depth:1]
+Blob files:
+  B000006 physical:{000006 size:[4190 (4.1KB)] vals:[4096 (4.0KB)]}
+
+batch
+del-range a z
+----
+
+flush
+----
+L0.0:
+  000008:[a#11,RANGEDEL-z#inf,RANGEDEL] seqnums:[#11-#11] points:[a#11,RANGEDEL-z#inf,RANGEDEL] size:671
+L6:
+  000005:[foo#10,SET-foo#10,SET] seqnums:[#10-#10] points:[foo#10,SET-foo#10,SET] size:784 blobrefs:[(B000006: 4096); depth:1]
+Blob files:
+  B000006 physical:{000006 size:[4190 (4.1KB)] vals:[4096 (4.0KB)]}
+
+wait-pending-table-stats
+000008
+----
+num-entries: 1
+num-deletions: 1
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 0
+range-deletions-bytes-estimate: 4974
+compression: None:79
+
+
+# More tests compacting tables with mixed value separation policies.
+# After changing span policies, blob references should no longer
+# be preserved.
+define value-separation=(enabled, min-size=1, max-ref-depth=3, rw-min-age=0, garbage-ratios=1.0:1.0)
+----
+
+# With these span policies, only values for keys o-z will be separated. [a, f)
+# has a value separation policy but the size threshold is too high for the
+# values in this test.
+set-span-policies
+a,f val-sep-minimum-size=100
+f,o val-sep-minimum-size=0
+----
+
+batch
+set a aa
+set b bb
+set f ff
+set g gg
+set o oo
+set p pp
+----
+
+flush
+----
+L0.0:
+  000005:[a#10,SET-b#11,SET] seqnums:[#10-#11] points:[a#10,SET-b#11,SET] size:698
+  000006:[f#12,SET-g#13,SET] seqnums:[#12-#13] points:[f#12,SET-g#13,SET] size:668
+  000007:[o#14,SET-p#15,SET] seqnums:[#14-#15] points:[o#14,SET-p#15,SET] size:780 blobrefs:[(B000008: 4); depth:1]
+Blob files:
+  B000008 physical:{000008 size:[94 (94B)] vals:[4 (4B)]}
+
+compact a-z
+----
+L6:
+  000009:[a#0,SET-b#0,SET] seqnums:[#0-#0] points:[a#0,SET-b#0,SET] size:693
+  000010:[f#0,SET-g#0,SET] seqnums:[#0-#0] points:[f#0,SET-g#0,SET] size:663
+  000011:[o#0,SET-p#0,SET] seqnums:[#0-#0] points:[o#0,SET-p#0,SET] size:779 blobrefs:[(B000008: 4); depth:1]
+Blob files:
+  B000008 physical:{000008 size:[94 (94B)] vals:[4 (4B)]}
+
+# Adjust the span policies. The first span policy is truncated to only cover
+# d-f. The second span policy's minimum size changes from 0 to 10 bytes, which
+# means value separation goes from disabled to enabled for keys [f, o).
+set-span-policies
+d,f val-sep-minimum-size=100
+f,o val-sep-minimum-size=10
+----
+
+
+batch
+set b bb
+set f ff
+set o oo
+----
+
+flush
+----
+L0.0:
+  000013:[b#16,SET-b#16,SET] seqnums:[#16-#16] points:[b#16,SET-b#16,SET] size:779 blobrefs:[(B000014: 2); depth:1]
+  000015:[f#17,SET-f#17,SET] seqnums:[#17-#17] points:[f#17,SET-f#17,SET] size:683
+  000016:[o#18,SET-o#18,SET] seqnums:[#18-#18] points:[o#18,SET-o#18,SET] size:779 blobrefs:[(B000017: 2); depth:1]
+L6:
+  000009:[a#0,SET-b#0,SET] seqnums:[#0-#0] points:[a#0,SET-b#0,SET] size:693
+  000010:[f#0,SET-g#0,SET] seqnums:[#0-#0] points:[f#0,SET-g#0,SET] size:663
+  000011:[o#0,SET-p#0,SET] seqnums:[#0-#0] points:[o#0,SET-p#0,SET] size:779 blobrefs:[(B000008: 4); depth:1]
+Blob files:
+  B000008 physical:{000008 size:[94 (94B)] vals:[4 (4B)]}
+  B000014 physical:{000014 size:[91 (91B)] vals:[2 (2B)]}
+  B000017 physical:{000017 size:[91 (91B)] vals:[2 (2B)]}
+
+
+# This should rewrite blob references for input tables, since the span
+# policies changed so the table's key range is longer covered by a span
+# policy, and [a,d) now can use the default policy of separating at the 1 byte
+# threshold.
+compact a-e
+----
+L0.0:
+  000015:[f#17,SET-f#17,SET] seqnums:[#17-#17] points:[f#17,SET-f#17,SET] size:683
+  000016:[o#18,SET-o#18,SET] seqnums:[#18-#18] points:[o#18,SET-o#18,SET] size:779 blobrefs:[(B000017: 2); depth:1]
+L6:
+  000018:[a#0,SET-b#0,SET] seqnums:[#0-#0] points:[a#0,SET-b#0,SET] size:779 blobrefs:[(B000019: 4); depth:1]
+  000010:[f#0,SET-g#0,SET] seqnums:[#0-#0] points:[f#0,SET-g#0,SET] size:663
+  000011:[o#0,SET-p#0,SET] seqnums:[#0-#0] points:[o#0,SET-p#0,SET] size:779 blobrefs:[(B000008: 4); depth:1]
+Blob files:
+  B000008 physical:{000008 size:[94 (94B)] vals:[4 (4B)]}
+  B000017 physical:{000017 size:[91 (91B)] vals:[2 (2B)]}
+  B000019 physical:{000019 size:[94 (94B)] vals:[4 (4B)]}
+
+# Compacting key range f-z. Even though the o-z input range is using the same
+# value separation settings, the f-o span policy changed. However, it
+# transitioned from disabled to enabled, and we don't eagerly rewrite in this
+# case. As the blob reference depth is low, blob files are not rewritten.
+compact f-z
+----
+L6:
+  000018:[a#0,SET-b#0,SET] seqnums:[#0-#0] points:[a#0,SET-b#0,SET] size:779 blobrefs:[(B000019: 4); depth:1]
+  000020:[f#0,SET-g#0,SET] seqnums:[#0-#0] points:[f#0,SET-g#0,SET] size:693
+  000021:[o#0,SET-p#0,SET] seqnums:[#0-#0] points:[o#0,SET-p#0,SET] size:786 blobrefs:[(B000017: 2), (B000008: 2); depth:2]
+Blob files:
+  B000008 physical:{000008 size:[94 (94B)] vals:[4 (4B)]}
+  B000017 physical:{000017 size:[91 (91B)] vals:[2 (2B)]}
+  B000019 physical:{000019 size:[94 (94B)] vals:[4 (4B)]}
+
+# Default value separation.
+sstable-properties file=000018
+----
+rocksdb.num.entries: 2
+rocksdb.raw.key.size: 18
+rocksdb.raw.value.size: 4
+rocksdb.deleted.keys: 0
+rocksdb.num.range-deletions: 0
+rocksdb.num.data.blocks: 1
+rocksdb.comparator: leveldb.BytewiseComparator
+rocksdb.data.size: 87
+rocksdb.filter.size: 0
+rocksdb.index.size: 36
+rocksdb.block.based.table.index.type: 0
+pebble.colblk.schema: DefaultKeySchema(leveldb.BytewiseComparator,16)
+rocksdb.merge.operator: pebble.concatenate
+rocksdb.merge.operands: 0
+pebble.num.values.in.blob-files: 2
+rocksdb.property.collectors: [obsolete-key]
+rocksdb.compression: Snappy
+pebble.compression_stats: None:56,Snappy:82/114
+pebble.value-separation.min-size: 1
+obsolete-key: hex:00
+
+# Overridden value separation.
+sstable-properties file=000020
+----
+rocksdb.num.entries: 2
+rocksdb.raw.key.size: 18
+rocksdb.raw.value.size: 4
+rocksdb.deleted.keys: 0
+rocksdb.num.range-deletions: 0
+rocksdb.num.data.blocks: 1
+rocksdb.comparator: leveldb.BytewiseComparator
+rocksdb.data.size: 84
+rocksdb.filter.size: 0
+rocksdb.index.size: 36
+rocksdb.block.based.table.index.type: 0
+pebble.colblk.schema: DefaultKeySchema(leveldb.BytewiseComparator,16)
+rocksdb.merge.operator: pebble.concatenate
+rocksdb.merge.operands: 0
+rocksdb.property.collectors: [obsolete-key]
+rocksdb.compression: Snappy
+pebble.compression_stats: None:36,Snappy:79/91
+pebble.value-separation.min-size: 10
+obsolete-key: hex:00
+
+
+# Default value separation.
+sstable-properties file=000021
+----
+rocksdb.num.entries: 2
+rocksdb.raw.key.size: 18
+rocksdb.raw.value.size: 4
+rocksdb.deleted.keys: 0
+rocksdb.num.range-deletions: 0
+rocksdb.num.data.blocks: 1
+rocksdb.comparator: leveldb.BytewiseComparator
+rocksdb.data.size: 89
+rocksdb.filter.size: 0
+rocksdb.index.size: 36
+rocksdb.block.based.table.index.type: 0
+pebble.colblk.schema: DefaultKeySchema(leveldb.BytewiseComparator,16)
+rocksdb.merge.operator: pebble.concatenate
+rocksdb.merge.operands: 0
+pebble.num.values.in.blob-files: 2
+rocksdb.property.collectors: [obsolete-key]
+rocksdb.compression: Snappy
+pebble.compression_stats: None:61,Snappy:84/114
+pebble.value-separation.min-size: 1
+obsolete-key: hex:00

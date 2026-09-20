@@ -1,0 +1,281 @@
+build 1
+set b b
+set c c
+----
+
+build 2
+del-range c z
+----
+
+# Test that a delete range in a more recent file shadows keys in an
+# earlier file.
+
+iter-init-error files=(1)
+----
+
+iter files=(1)
+first
+next
+next
+----
+b: (b, .)
+c: (c, .)
+.
+
+iter files=(1)
+seek-ge bb
+next
+----
+c: (c, .)
+.
+
+iter files=(2, 1)
+first
+next
+----
+b: (b, .)
+.
+
+iter-init-error files=(2, 1)
+----
+
+build 3
+set a a
+set f f
+----
+
+# Test including an even more recent file with point keys overlapping
+# the rangedel. Since the point keys are assigned a higher sequence
+# number, they should NOT be shadowed by the rangedel.
+
+iter files=(3, 2, 1)
+first
+next
+next
+next
+----
+a: (a, .)
+b: (b, .)
+f: (f, .)
+.
+
+iter-init-error files=(3, 2, 1)
+----
+
+# Test including range keys, and merging the range key state across
+# files. Range keys should be interleaved.
+
+build 4
+range-key-set a c @2 foo
+range-key-set c e @3 bar
+----
+
+build 5
+range-key-del b d
+----
+
+iter files=(5, 4, 3, 2, 1)
+first
+next
+next
+next
+next
+----
+a: (a, [a-b) @2=foo UPDATED)
+b: (b, . UPDATED)
+d: (., [d-e) @3=bar UPDATED)
+f: (f, . UPDATED)
+.
+
+# Test including range keys with empty spans and a merge in between. At no point
+# should an empty span be returned.
+
+build 6
+merge bb ac
+----
+
+iter files=(6, 5, 4, 3, 2, 1)
+seek-lt c
+prev
+next
+next
+----
+bb: (ac, .)
+b: (b, .)
+bb: (ac, .)
+d: (., [d-e) @3=bar UPDATED)
+
+iter files=(6, 5, 4, 3, 2, 1)
+seek-ge b
+next
+prev
+prev
+next
+next
+next
+----
+b: (b, .)
+bb: (ac, .)
+b: (b, .)
+a: (a, [a-b) @2=foo UPDATED)
+b: (b, . UPDATED)
+bb: (ac, .)
+d: (., [d-e) @3=bar UPDATED)
+
+iter-init-error files=(5, 6, 4, 3, 2, 1)
+----
+
+# Test range keys that overlap each other with identical state. These
+# should be defragmented and exposed as a single range key.
+
+reset
+----
+
+build ag
+range-key-set a g @5 foo
+----
+
+build ek
+range-key-set e k @5 foo
+----
+
+iter files=(ag, ek)
+first
+next
+----
+a: (., [a-k) @5=foo UPDATED)
+.
+
+# Test range-key masking by creating points, some with suffixes above
+# the range key's suffix, some with suffixes below the range key's
+# suffix.
+
+build points
+set a@4 v
+set c@2 v
+set d@9 v
+set e@5 v
+set k@3 v
+set p@4 v
+----
+
+iter-init-error files=(points, ag, ek)  mask-suffix=@7
+----
+
+iter files=(points, ag, ek) mask-suffix=@7
+first
+next
+next
+next
+next
+next
+----
+a: (., [a-k) @5=foo UPDATED)
+d@9: (v, [a-k) @5=foo)
+e@5: (v, [a-k) @5=foo)
+k@3: (v, . UPDATED)
+p@4: (v, .)
+.
+
+# Test that 'stacked' range keys (eg, multiple defined over the same keyspan at
+# varying suffixes) work  as expected.
+
+build stacked
+range-key-set a k @4 bar
+range-key-set a k @1 bax
+----
+
+iter files=(points, ag, ek, stacked)
+first
+next
+----
+a: (., [a-k) @5=foo, @4=bar, @1=bax UPDATED)
+a@4: (v, [a-k) @5=foo, @4=bar, @1=bax)
+
+iter-init-error files=(points, ag, ek, stacked)
+----
+
+# Test mutating the external iterator's options through SetOptions.
+
+iter files=(points, ag, ek)
+set-options key-types=point
+first
+next
+set-options lower=e upper=p
+first
+next
+----
+.
+a@4: (v, .)
+c@2: (v, .)
+.
+e@5: (v, .)
+k@3: (v, .)
+
+reset
+----
+
+build a
+set a@3 a@3
+set a@1 a@1
+----
+
+build aa
+set aa@3 aa@3
+set aa@1 aa@1
+----
+
+build aaa
+set aaa@3 aaa@3
+set aaa@1 aaa@1
+----
+
+build aaaa
+set aaaa@3 aaaa@3
+set aaaa@1 aaaa@1
+----
+
+build aaaaa
+set aaaaa@3 aaaaa@3
+set aaaaa@1 aaaaa@1
+----
+
+iter-init-error files=(a, aa, aaa, aaaa, aaaaa)
+----
+
+iter files=(a, aa, aaa, aaaa, aaaaa)
+seek-ge a
+next
+seek-ge aa
+next
+seek-ge aaa
+next
+seek-ge aaaa
+next
+seek-ge aaaaa
+next
+stats
+----
+a@3: (a@3, .)
+a@1: (a@1, .)
+aa@3: (aa@3, .)
+aa@1: (aa@1, .)
+aaa@3: (aaa@3, .)
+aaa@1: (aaa@1, .)
+aaaa@3: (aaaa@3, .)
+aaaa@1: (aaaa@1, .)
+aaaaa@3: (aaaaa@3, .)
+aaaaa@1: (aaaaa@1, .)
+stats: seeked 5 times (5 internal); stepped 5 times (5 internal); blocks: 0B cached, 1.3KB not cached (read time: 0s); points: 10 (50B keys, 35B values); separated: 5 (25B, 25B fetched)
+
+build table-with-blob-refs
+set a@9 a9
+set a@8 a8
+set b@3 blob{fileNum=1005 value=a-value-stored-in-a-blob-file}
+set c@9 c9
+----
+
+iter files=(table-with-blob-refs)
+seek-ge a
+----
+error: pebble: NewExternalIter does not support blob references

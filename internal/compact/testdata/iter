@@ -1,0 +1,1167 @@
+define
+a#1,SET:b
+----
+
+iter print-snapshot-pinned
+first
+next
+----
+a#1,SET:b (not pinned)
+.
+
+define
+a#2,SET:c
+a#1,SET:b
+----
+
+iter print-snapshot-pinned
+first
+next
+----
+a#2,SET:c (not pinned)
+.
+
+iter print-snapshot-pinned snapshots=0
+first
+next
+----
+a#2,SET:c (not pinned)
+.
+
+iter snapshots=1
+first
+next
+----
+a#2,SET:c
+.
+
+iter print-snapshot-pinned snapshots=2
+first
+next
+next
+----
+a#2,SET:c (not pinned)
+a#1,SET:b (pinned)
+.
+
+define
+a#2,DEL:
+a#1,SET:b
+----
+
+iter
+first
+next
+----
+a#2,DEL:
+.
+
+iter elide-tombstones=true
+first
+----
+.
+
+iter print-snapshot-pinned elide-tombstones=true snapshots=2
+first
+next
+next
+----
+a#2,DEL: (pinned)
+a#1,SET:b (pinned)
+.
+
+iter print-snapshot-pinned elide-tombstones=true snapshots=1
+first
+next
+----
+a#2,DEL: (pinned)
+.
+
+define
+a#2,DEL:
+a#1,SET:b
+b#3,SET:c
+----
+
+iter print-snapshot-pinned
+first
+next
+next
+----
+a#2,DEL: (not pinned)
+b#3,SET:c (not pinned)
+.
+
+iter snapshots=1
+first
+next
+next
+----
+a#2,DEL:
+b#3,SET:c
+.
+
+iter snapshots=2
+first
+next
+next
+next
+----
+a#2,DEL:
+a#1,SET:b
+b#3,SET:c
+.
+
+define
+a#1,SET:a
+b#2,SET:b
+c#3,SET:c
+----
+
+iter
+first
+next
+next
+next
+----
+a#1,SET:a
+b#2,SET:b
+c#3,SET:c
+.
+
+define
+a#3,MERGE:d
+a#2,MERGE:c
+a#1,SET:b
+b#2,MERGE:b
+b#1,MERGE:a
+----
+
+iter
+first
+next
+next
+----
+a#3,SET:bcd[base]
+b#2,MERGE:ab
+.
+
+iter snapshots=3  print-snapshot-pinned
+first
+next
+next
+next
+----
+a#3,MERGE:d (not pinned)
+a#2,SET:bc[base] (pinned)
+b#2,MERGE:ab (not pinned)
+.
+
+define
+a#9,SET:b
+a#8,DEL:
+a#7,SET:d
+a#6,DEL:
+a#5,SET:f
+----
+
+iter
+first
+next
+----
+a#9,SETWITHDEL:b
+.
+
+iter snapshots=6
+first
+next
+next
+----
+a#9,SETWITHDEL:b
+a#5,SET:f
+.
+
+iter snapshots=7
+first
+next
+next
+----
+a#9,SETWITHDEL:b
+a#6,DEL:
+.
+
+iter snapshots=8
+first
+next
+next
+----
+a#9,SETWITHDEL:b
+a#7,SETWITHDEL:d
+.
+
+iter snapshots=9
+first
+next
+next
+----
+a#9,SET:b
+a#8,DEL:
+.
+
+iter snapshots=10
+first
+next
+----
+a#9,SETWITHDEL:b
+.
+
+iter snapshots=(5,6,7,8,9) print-snapshot-pinned
+first
+next
+next
+next
+next
+next
+----
+a#9,SET:b (not pinned)
+a#8,DEL: (pinned)
+a#7,SET:d (pinned)
+a#6,DEL: (pinned)
+a#5,SET:f (pinned)
+.
+
+define
+a#2,INVALID:b
+a#1,SET:c
+----
+
+iter
+first
+----
+err=invalid internal key kind: INVALID
+
+define
+a#2,SET:b
+a#1,INVALID:c
+----
+
+iter
+first
+next
+----
+err=invalid internal key kind: INVALID
+err=invalid internal key kind: INVALID
+
+define
+a#2,MERGE:b
+a#1,INVALID:c
+----
+
+iter
+first
+next
+----
+err=invalid internal key kind: INVALID
+err=invalid internal key kind: INVALID
+
+define
+a#2,INVALID:c
+a#1,RANGEDEL:d
+----
+
+iter
+first
+----
+a#inf,RANGEDEL:; Span() = a-d:{(#1,RANGEDEL)}
+
+define
+a#2,MERGE:b
+a#1,MERGE:c
+a#0,MERGE:d
+----
+
+iter snapshots=(1,2) print-snapshot-pinned
+first
+next
+next
+next
+----
+a#2,MERGE:b (not pinned)
+a#1,MERGE:c (pinned)
+a#0,MERGE:d (pinned)
+.
+
+define
+a#2,SET:b
+a#1,RANGEDEL:c
+b#4,RANGEDEL:d
+b#2,SET:e
+c#3,SET:f
+----
+
+# NB: Range deletions are always marked as 'not pinned' currently. Extending
+# snapshot-pinning statistics to range deletions and range keys is TODO.
+
+iter print-snapshot-pinned
+first
+next
+next
+next
+----
+a#inf,RANGEDEL: (not pinned); Span() = a-b:{(#1,RANGEDEL)}
+a#2,SET:b (not pinned)
+b#inf,RANGEDEL: (not pinned); Span() = b-c:{(#4,RANGEDEL)}
+c#inf,RANGEDEL: (not pinned); Span() = c-d:{(#4,RANGEDEL)}
+
+iter snapshots=2 print-snapshot-pinned
+first
+next
+next
+next
+----
+a#inf,RANGEDEL: (not pinned); Span() = a-b:{(#1,RANGEDEL)}
+a#2,SET:b (not pinned)
+b#inf,RANGEDEL: (not pinned); Span() = b-c:{(#4,RANGEDEL) (#1,RANGEDEL)}
+c#inf,RANGEDEL: (not pinned); Span() = c-d:{(#4,RANGEDEL)}
+
+iter snapshots=3 print-snapshot-pinned
+first
+next
+next
+next
+next
+----
+a#inf,RANGEDEL: (not pinned); Span() = a-b:{(#1,RANGEDEL)}
+a#2,SET:b (not pinned)
+b#inf,RANGEDEL: (not pinned); Span() = b-c:{(#4,RANGEDEL) (#1,RANGEDEL)}
+b#2,SET:e (pinned)
+c#inf,RANGEDEL: (not pinned); Span() = c-d:{(#4,RANGEDEL)}
+
+iter snapshots=4 print-snapshot-pinned
+first
+next
+next
+next
+next
+next
+----
+a#inf,RANGEDEL: (not pinned); Span() = a-b:{(#1,RANGEDEL)}
+a#2,SET:b (not pinned)
+b#inf,RANGEDEL: (not pinned); Span() = b-c:{(#4,RANGEDEL) (#1,RANGEDEL)}
+b#2,SET:e (pinned)
+c#inf,RANGEDEL: (not pinned); Span() = c-d:{(#4,RANGEDEL)}
+c#3,SET:f (pinned)
+
+define
+a#3,RANGEDEL:e
+b#4,SET:b
+c#3,SET:c
+d#2,SET:d
+e#1,SET:e
+----
+
+iter
+first
+next
+next
+next
+next
+----
+a#inf,RANGEDEL:; Span() = a-e:{(#3,RANGEDEL)}
+b#4,SET:b
+c#3,SET:c
+e#1,SET:e
+.
+
+define
+a#3,RANGEDEL:e
+b#4,MERGE:b
+c#3,MERGE:c
+d#2,MERGE:d
+e#1,MERGE:e
+----
+
+iter
+first
+next
+next
+next
+next
+----
+a#inf,RANGEDEL:; Span() = a-e:{(#3,RANGEDEL)}
+b#4,MERGE:b
+c#3,MERGE:c
+e#1,MERGE:e
+.
+
+define
+a#3,RANGEDEL:c
+b#5,MERGE:e
+b#4,MERGE:d
+b#2,MERGE:c
+b#1,MERGE:b
+d#5,MERGE:c
+d#4,MERGE:b
+d#3,RANGEDEL:f
+d#2,MERGE:e
+d#1,MERGE:d
+----
+
+iter
+first
+next
+next
+next
+next
+----
+a#inf,RANGEDEL:; Span() = a-c:{(#3,RANGEDEL)}
+b#5,MERGE:de
+d#inf,RANGEDEL:; Span() = d-f:{(#3,RANGEDEL)}
+d#5,MERGE:bc
+.
+
+define
+a#3,RANGEDEL:d
+b#2,RANGEDEL:e
+c#1,RANGEDEL:f
+----
+
+iter
+first
+next
+next
+next
+----
+a#inf,RANGEDEL:; Span() = a-b:{(#3,RANGEDEL)}
+b#inf,RANGEDEL:; Span() = b-c:{(#3,RANGEDEL)}
+c#inf,RANGEDEL:; Span() = c-d:{(#3,RANGEDEL)}
+d#inf,RANGEDEL:; Span() = d-e:{(#2,RANGEDEL)}
+
+iter snapshots=2
+first
+next
+next
+next
+----
+a#inf,RANGEDEL:; Span() = a-b:{(#3,RANGEDEL)}
+b#inf,RANGEDEL:; Span() = b-c:{(#3,RANGEDEL)}
+c#inf,RANGEDEL:; Span() = c-d:{(#3,RANGEDEL) (#1,RANGEDEL)}
+d#inf,RANGEDEL:; Span() = d-e:{(#2,RANGEDEL) (#1,RANGEDEL)}
+
+iter snapshots=3
+first
+next
+next
+next
+----
+a#inf,RANGEDEL:; Span() = a-b:{(#3,RANGEDEL)}
+b#inf,RANGEDEL:; Span() = b-c:{(#3,RANGEDEL) (#2,RANGEDEL)}
+c#inf,RANGEDEL:; Span() = c-d:{(#3,RANGEDEL) (#2,RANGEDEL)}
+d#inf,RANGEDEL:; Span() = d-e:{(#2,RANGEDEL)}
+
+iter snapshots=(2,3)
+first
+next
+next
+next
+----
+a#inf,RANGEDEL:; Span() = a-b:{(#3,RANGEDEL)}
+b#inf,RANGEDEL:; Span() = b-c:{(#3,RANGEDEL) (#2,RANGEDEL)}
+c#inf,RANGEDEL:; Span() = c-d:{(#3,RANGEDEL) (#2,RANGEDEL) (#1,RANGEDEL)}
+d#inf,RANGEDEL:; Span() = d-e:{(#2,RANGEDEL) (#1,RANGEDEL)}
+
+define
+a#10,RANGEDEL:k
+f#9,SET:f
+f#8,SET:f
+----
+
+iter snapshots=(9,10)
+first
+next
+next
+----
+a#inf,RANGEDEL:; Span() = a-k:{(#10,RANGEDEL)}
+f#9,SET:f
+f#8,SET:f
+
+define
+f#10,RANGEDEL:k
+f#9,SET:f
+f#8,SET:f
+----
+
+iter snapshots=(9,10)
+first
+next
+next
+----
+f#inf,RANGEDEL:; Span() = f-k:{(#10,RANGEDEL)}
+f#9,SET:f
+f#8,SET:f
+
+define
+a#1,SET:a
+b#2,RANGEDEL:d
+c#3,RANGEDEL:e
+d#4,SET:d
+----
+
+iter
+first
+next
+next
+next
+----
+a#1,SET:a
+b#inf,RANGEDEL:; Span() = b-c:{(#2,RANGEDEL)}
+c#inf,RANGEDEL:; Span() = c-d:{(#3,RANGEDEL)}
+d#inf,RANGEDEL:; Span() = d-e:{(#3,RANGEDEL)}
+
+iter snapshots=3
+first
+next
+next
+next
+----
+a#1,SET:a
+b#inf,RANGEDEL:; Span() = b-c:{(#2,RANGEDEL)}
+c#inf,RANGEDEL:; Span() = c-d:{(#3,RANGEDEL) (#2,RANGEDEL)}
+d#inf,RANGEDEL:; Span() = d-e:{(#3,RANGEDEL)}
+
+define
+a#1,SET:a
+b#2,RANGEDEL:d
+c#4,SET:d
+----
+
+iter
+first
+next
+next
+----
+a#1,SET:a
+b#inf,RANGEDEL:; Span() = b-d:{(#2,RANGEDEL)}
+c#4,SET:d
+
+define
+a#2,RANGEDEL:d
+a#2,SET:a
+b#2,SET:b
+c#2,SET:c
+----
+
+iter
+first
+next
+next
+next
+next
+----
+a#inf,RANGEDEL:; Span() = a-d:{(#2,RANGEDEL)}
+a#2,SET:a
+b#2,SET:b
+c#2,SET:c
+.
+
+define
+a#1,SINGLEDEL:
+----
+
+iter
+first
+next
+----
+a#1,SINGLEDEL:
+.
+
+iter elide-tombstones=true
+first
+----
+.
+ineffectual-single-deletes: a
+
+define
+a#2,SINGLEDEL:
+a#1,SINGLEDEL:
+----
+
+iter
+first
+next
+----
+a#2,SINGLEDEL:
+.
+ineffectual-single-deletes: a
+
+define
+a#3,SINGLEDEL:
+a#2,SINGLEDEL:
+a#1,SET:a
+----
+
+iter
+first
+----
+.
+ineffectual-single-deletes: a
+
+define
+a#3,SET:a
+b#2,SINGLEDEL:
+b#1,DEL:
+----
+
+iter
+first
+next
+next
+----
+a#3,SET:a
+b#2,DEL:
+.
+ineffectual-single-deletes: b
+
+define
+a#2,SINGLEDEL:
+a#1,DEL:
+----
+
+iter
+first
+next
+----
+a#2,DEL:
+.
+ineffectual-single-deletes: a
+
+iter elide-tombstones=true
+first
+----
+.
+ineffectual-single-deletes: a
+
+define
+a#2,SINGLEDEL:
+a#1,MERGE:a
+----
+
+iter
+first
+----
+.
+
+iter elide-tombstones=true
+first
+----
+.
+
+define
+a#2,SINGLEDEL:
+a#1,SET:b
+----
+
+iter
+first
+----
+.
+
+define
+a#2,SET:b
+a#1,SINGLEDEL:
+----
+
+iter
+first
+next
+----
+a#2,SETWITHDEL:b
+.
+
+# We don't notice the ineffectual single delete since the SET causes all
+# SingleDelete error checking to be skipped.
+iter elide-tombstones=true
+first
+next
+----
+a#2,SETWITHDEL:b
+.
+
+define
+a#6,MERGE:b
+a#5,SINGLEDEL:
+a#4,SET:a
+----
+
+iter
+first
+next
+----
+a#6,SETWITHDEL:b[base]
+.
+
+# Non-deterministic use of SINGLEDEL where there are two older SETs that have
+# not been deleted or single deleted. It is permitted to shadow both, since
+# MERGE turns into a SETWITHDELETE when it meets the SINGLEDEL.
+define
+a#6,MERGE:b
+a#5,SINGLEDEL:
+a#4,SET:a
+a#3,SET:a
+----
+
+iter
+first
+next
+----
+a#6,SETWITHDEL:b[base]
+.
+
+define
+a#2,SINGLEDEL:
+a#1,SET:b
+b#3,SET:c
+----
+
+iter
+first
+next
+----
+b#3,SET:c
+.
+
+define
+a#3,SINGLEDEL:
+a#2,SET:b
+a#1,SET:a
+----
+
+iter
+first
+next
+----
+a#1,SET:a
+.
+invariant-violation-single-deletes: a
+
+define
+a#3,SINGLEDEL:
+a#2,MERGE:b
+a#1,MERGE:a
+----
+
+# SINGLEDEL consumes the first MERGE.
+iter
+first
+next
+----
+a#1,MERGE:a
+.
+invariant-violation-single-deletes: a
+
+define
+a#4,SINGLEDEL:
+a#3,SET:val
+a#2,SINGLEDEL:
+a#1,SET:val
+----
+
+iter
+first
+----
+.
+
+iter snapshots=2
+first
+next
+next
+----
+a#2,SINGLEDEL:
+a#1,SET:val
+.
+
+define
+a#4,SINGLEDEL:
+a#3,SET:val
+a#2,DEL:
+a#1,SET:val
+----
+
+iter
+first
+next
+----
+a#2,DEL:
+.
+
+iter snapshots=2
+first
+next
+next
+----
+a#2,DEL:
+a#1,SET:val
+.
+
+iter snapshots=3
+first
+next
+----
+a#2,DEL:
+.
+
+iter snapshots=(2,3)
+first
+next
+next
+----
+a#2,DEL:
+a#1,SET:val
+.
+
+define
+a#4,SINGLEDEL:
+a#3,SET:c
+a#2,MERGE:b
+a#1,SET:a
+----
+
+iter
+first
+next
+----
+a#2,SET:ab[base]
+.
+invariant-violation-single-deletes: a
+
+iter snapshots=2
+first
+next
+next
+----
+a#2,MERGE:b
+a#1,SET:a
+.
+invariant-violation-single-deletes: a
+
+iter snapshots=3
+first
+next
+----
+a#2,SET:ab[base]
+.
+invariant-violation-single-deletes: a
+
+iter snapshots=(2,3,4)
+first
+next
+next
+next
+next
+----
+a#4,SINGLEDEL:
+a#3,SET:c
+a#2,MERGE:b
+a#1,SET:a
+.
+
+define
+a#3,SINGLEDEL:
+a#2,RANGEDEL:c
+a#1,SET:val
+----
+
+iter
+first
+next
+next
+----
+a#inf,RANGEDEL:; Span() = a-c:{(#2,RANGEDEL)}
+a#3,SINGLEDEL:
+.
+
+define
+a#3,RANGEDEL:d
+a#2,DEL:
+a#1,SET:a
+d#2,DEL:
+----
+
+iter
+first
+next
+next
+----
+a#inf,RANGEDEL:; Span() = a-d:{(#3,RANGEDEL)}
+d#2,DEL:
+.
+
+iter snapshots=3
+first
+next
+next
+next
+----
+a#inf,RANGEDEL:; Span() = a-d:{(#3,RANGEDEL)}
+a#2,DEL:
+d#2,DEL:
+.
+
+iter snapshots=2
+first
+next
+next
+next
+----
+a#inf,RANGEDEL:; Span() = a-d:{(#3,RANGEDEL)}
+a#1,SET:a
+d#2,DEL:
+.
+
+iter snapshots=1
+first
+next
+next
+----
+a#inf,RANGEDEL:; Span() = a-d:{(#3,RANGEDEL)}
+d#2,DEL:
+.
+
+define
+a#2,MERGE:a
+b#1,RANGEDEL:c
+----
+
+iter
+first
+next
+next
+----
+a#2,MERGE:a
+b#inf,RANGEDEL:; Span() = b-c:{(#1,RANGEDEL)}
+.
+
+define
+a#2,MERGE:v2
+a#1,RANGEDEL:b
+a#1,MERGE:v1
+----
+
+iter is-bottommost-layer=true
+first
+next
+next
+next
+----
+a#inf,RANGEDEL:; Span() = a-b:{(#1,RANGEDEL)}
+a#0,SET:v1v2[base]
+.
+.
+
+# Verify that we transform merge+del -> set.
+
+define
+a#5,MERGE:5
+a#3,DEL:
+a#1,MERGE:1
+----
+
+iter
+first
+next
+----
+a#5,SETWITHDEL:5[base]
+.
+
+iter is-bottommost-layer=true
+first
+next
+----
+a#0,SETWITHDEL:5[base]
+.
+
+iter elide-tombstones=true
+first
+next
+----
+a#5,SETWITHDEL:5[base]
+.
+
+iter snapshots=2
+first
+next
+next
+----
+a#5,SETWITHDEL:5[base]
+a#1,MERGE:1
+.
+
+iter snapshots=2 elide-tombstones=true
+first
+next
+next
+----
+a#5,SETWITHDEL:5[base]
+a#1,MERGE:1
+.
+
+# Verify that merge+rangedel -> merge.
+
+define
+a#3,RANGEDEL:c
+b#5,MERGE:5
+b#2,SET:2
+b#1,MERGE:1
+----
+
+iter
+first
+next
+next
+----
+a#inf,RANGEDEL:; Span() = a-c:{(#3,RANGEDEL)}
+b#5,MERGE:5
+.
+
+iter is-bottommost-layer=true
+first
+next
+next
+----
+a#inf,RANGEDEL:; Span() = a-c:{(#3,RANGEDEL)}
+b#0,SET:5[base]
+.
+
+iter snapshots=2
+first
+next
+next
+----
+a#inf,RANGEDEL:; Span() = a-c:{(#3,RANGEDEL)}
+b#5,MERGE:5
+b#1,MERGE:1
+
+define
+a#3,RANGEDEL:c
+b#5,MERGE:5
+b#2,MERGE:2
+b#1,MERGE:1
+----
+
+iter
+first
+next
+next
+----
+a#inf,RANGEDEL:; Span() = a-c:{(#3,RANGEDEL)}
+b#5,MERGE:5
+.
+
+iter snapshots=2
+first
+next
+next
+----
+a#inf,RANGEDEL:; Span() = a-c:{(#3,RANGEDEL)}
+b#5,MERGE:5
+b#1,MERGE:1
+
+# NB: Zero values are skipped by deletable merger.
+define merger=deletable
+a#4,MERGE:-2
+a#3,MERGE:-1
+a#2,MERGE:2
+a#1,MERGE:1
+b#4,MERGE:-3
+b#3,MERGE:3
+b#2,MERGE:2
+b#1,MERGE:-2
+----
+
+iter
+first
+next
+next
+----
+.
+.
+.
+
+# Test that range keys are interleaved and exposed by the iterator.
+define
+a#4,SINGLEDEL:
+a#3,SET:val
+a#2,DEL:
+a#1,SET:val
+c#3,SET:val
+Span: a-b:{(#3,RANGEKEYSET,@2,foo)}
+Span: d-e:{(#3,RANGEKEYSET,@2,foo)}
+----
+
+iter
+first
+next
+next
+next
+next
+----
+a#inf,RANGEKEYSET:; Span() = a-b:{(#3,RANGEKEYSET,@2,foo)}
+a#2,DEL:
+c#3,SET:val
+d#inf,RANGEKEYSET:; Span() = d-e:{(#3,RANGEKEYSET,@2,foo)}
+.
+
+# Verify that a span boundary doesn't incorrectly cause a key with the same user
+# key to be skipped.
+define
+Span: a-b:{(#5,RANGEKEYDEL)}
+a#3,SET:val
+----
+
+iter elide-tombstones=true
+first
+next
+----
+a#3,SET:val
+.
+
+# Define an input sequence of simple blob references, all pointing into the same
+# blob file block.
+
+define
+a#9,SET:blobref(000294, blk2, 10, 20)
+b#3,SET:blobref(000294, blk2, 30, 5)
+c#8,SETWITHDEL:blobref(000294, blk2, 35, 100)
+d#2,SET:blobref(000294, blk2, 135, 4)
+----
+
+# An iterator should preserve blob references.
+
+iter
+first
+next
+next
+next
+----
+a#9,SET:<blobref(B000294, encodedHandle=020a, valLen=20)>
+b#3,SET:<blobref(B000294, encodedHandle=021e, valLen=5)>
+c#8,SETWITHDEL:<blobref(B000294, encodedHandle=0223, valLen=100)>
+d#2,SET:<blobref(B000294, encodedHandle=028701, valLen=4)>
+
+# The iterator may need to fetch a blob value if it's an operand to the merge
+# operator.
+
+define
+a#3,SET:blobref(000294, blk2, 10, 20)
+b#9,MERGE:mergekeyvalue
+b#8,SETWITHDEL:blobref(000294, blk2, 35, 100)
+----
+
+iter
+first
+next
+next
+----
+a#3,SET:<blobref(B000294, encodedHandle=020a, valLen=20)>
+b#9,SET:<fetched value from blobref(B000294, encodedHandle=0223, valLen=100)>mergekeyvalue[base]
+.

@@ -1,0 +1,79 @@
+corpus high_read_amp
+----
+
+tree
+----
+          /
+            build/
+     758      000005.sst
+     454      000007.sst
+      89      000008.log
+     454      000009.sst
+     200      000011.log
+     508      000012.sst
+       0      LOCK
+     133      MANIFEST-000001
+     205      MANIFEST-000010
+    2966      OPTIONS-000002
+       0      marker.format-version.000001.013
+       0      marker.manifest.000002.MANIFEST-000010
+            high_read_amp/
+     508      000012.sst
+     205      MANIFEST-000010
+              checkpoint/
+     758        000005.sst
+     454        000007.sst
+      11        000008.log
+     454        000009.sst
+     157        MANIFEST-000010
+    2966        OPTIONS-000002
+       0        marker.format-version.000001.013
+       0        marker.manifest.000001.MANIFEST-000010
+
+replay high_read_amp fixed 1
+----
+
+wait-for-compactions
+----
+
+wait
+----
+replayed 42B in writes
+
+scan-keys
+----
+a: a
+b: b
+c: c
+d: d
+de: d
+e: e
+ed: e
+f: f
+fe: f
+g: g
+ge: g
+h: h
+he: h
+i: i
+ie: i
+j: j
+k: k
+l: l
+m: m
+n: n
+o: o
+p: p
+q: q
+r: r
+s: s
+t: t
+u: u
+v: v
+w: w
+x: x
+y: y
+z: z
+
+close
+----

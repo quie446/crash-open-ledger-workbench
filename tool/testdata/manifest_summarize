@@ -1,0 +1,49 @@
+manifest summarize
+----
+requires at least 1 arg(s), only received 0
+
+manifest summarize
+../testdata/db-stage-2/MANIFEST-000001
+----
+MANIFEST-000001
+(no timestamps)
+---
+Estimated start time: 0001-01-01T00:00:00Z
+Estimated end time:   0001-01-01T00:00:00Z
+Estimated duration:   0s
+
+manifest summarize
+./testdata/find-db/MANIFEST-000001
+----
+MANIFEST-000001
+                        _______L0_______L1_______L2_______L3_______L4_______L5_______L6_____TOTAL
+2023-12-12T18:55:00Z
+     Ingest+Flush Bytes      2.0KB        .        .        .        .        .     671B    2.7KB
+   Ingest+Flush Bytes/s    2.0KB/s        .        .        .        .        .   671B/s  2.7KB/s
+      Compact Out Bytes      2.0KB        .        .        .        .        .        .    2.0KB
+    Compact Out Bytes/s    2.0KB/s        .        .        .        .        .        .  2.0KB/s
+     Compact In Bytes/s          .        .        .        .        .        .  2.2KB/s  2.2KB/s
+     Compact In Files/s          .        .        .        .        .        .    3.0/s    3.0/s
+2023-12-12T18:55:00Z
+---
+Estimated start time: 2023-12-12T18:55:00Z
+Estimated end time:   2023-12-12T18:55:00Z
+Estimated duration:   0s
+
+manifest summarize
+./testdata/mixed/MANIFEST-000001
+----
+MANIFEST-000001
+                        _______L0_______L1_______L2_______L3_______L4_______L5_______L6_____TOTAL
+2023-12-11T18:59:04Z
+     Ingest+Flush Bytes      1.0KB        .        .        .        .        .        .    1.0KB
+   Ingest+Flush Bytes/s    1.0KB/s        .        .        .        .        .        .  1.0KB/s
+      Compact Out Bytes          .        .        .        .        .        .        .        .
+    Compact Out Bytes/s          .        .        .        .        .        .        .        .
+     Compact In Bytes/s          .        .        .        .        .        .        .        .
+     Compact In Files/s          .        .        .        .        .        .        .        .
+2023-12-11T18:59:04Z
+---
+Estimated start time: 2023-12-11T18:59:04Z
+Estimated end time:   2023-12-11T18:59:04Z
+Estimated duration:   0s

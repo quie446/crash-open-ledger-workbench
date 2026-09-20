@@ -1,0 +1,300 @@
+# Simple test with a single file per level.
+
+define
+L1
+  b#11,SET:foo
+  c#11,SET:foo
+L2
+  c#0,SET:foo
+  d#0,SET:foo
+----
+L1:
+  000004:[b#11,SET-c#11,SET]
+L2:
+  000005:[c#0,SET-d#0,SET]
+
+file-sizes
+----
+L1:
+  000004:[b#11,SET-c#11,SET]: 698 bytes (698B)
+L2:
+  000005:[c#0,SET-d#0,SET]: 693 bytes (693B)
+
+pick-file L1
+----
+000004:[b#11,SET-c#11,SET]
+
+pick-file L2
+----
+000005:[c#0,SET-d#0,SET]
+
+# Test a scenario where we should pick a file with a tiny file size over one
+# with a larger file size, because the tiny sized one overlaps zero data in the
+# output level.
+
+define
+L5
+  b#11,SET:<rand-bytes=65536>
+  c#11,SET:<rand-bytes=65536>
+L5
+  e#11,SET:<rand-bytes=2>
+L6
+  a#0,SET:foo
+  d#0,SET:foo
+----
+L5:
+  000004:[b#11,SET-c#11,SET]
+  000005:[e#11,SET-e#11,SET]
+L6:
+  000006:[a#0,SET-d#0,SET]
+
+pick-file L5
+----
+000005:[e#11,SET-e#11,SET]
+
+# Test the same scenario as above, but the larger file that overlaps the next
+# level only overlaps on its start boundary key ("c").
+
+define
+L5
+  c#11,SET:<rand-bytes=65536>
+  d#11,SET:<rand-bytes=65536>
+L5
+  e#11,SET:<rand-bytes=2>
+L6
+  a#0,SET:foo
+  c#0,SET:foo
+----
+L5:
+  000004:[c#11,SET-d#11,SET]
+  000005:[e#11,SET-e#11,SET]
+L6:
+  000006:[a#0,SET-c#0,SET]
+
+pick-file L5
+----
+000005:[e#11,SET-e#11,SET]
+
+
+# Test a scenario where the file containing e#11,SET overlaps an L6 file
+# containing e#0,SET. These files should be considered overlapping, despite the
+# fact that they don't overlap within the internal key keyspace. The overlap
+# should then cause the larger file (with a lower overlapping ratio) to be
+# picked.
+
+define
+L5
+  c#11,SET:<rand-bytes=65536>
+  d#11,SET:<rand-bytes=65536>
+L5
+  e#11,SET:<rand-bytes=2>
+L6
+  a#0,SET:foo
+  c#0,SET:foo
+L6
+  e#0,SET:foo
+----
+L5:
+  000004:[c#11,SET-d#11,SET]
+  000005:[e#11,SET-e#11,SET]
+L6:
+  000006:[a#0,SET-c#0,SET]
+  000007:[e#0,SET-e#0,SET]
+
+pick-file L5
+----
+000004:[c#11,SET-d#11,SET]
+
+# Test with virtual ssts.
+define
+L5
+  c#11,SET:<rand-bytes=32768>
+  d#11,SET:<rand-bytes=65536>
+  e#11,SET:<rand-bytes=100>
+L5
+  f#11,SET:<rand-bytes=57344>
+L6
+  c#0,SET:<rand-bytes=65536>
+L6
+  e#0,SET:<rand-bytes=65536>
+L6
+  f#0,SET:<rand-bytes=65536>
+----
+L5:
+  000004:[c#11,SET-e#11,SET]
+  000005:[f#11,SET-f#11,SET]
+L6:
+  000006:[c#0,SET-c#0,SET]
+  000007:[e#0,SET-e#0,SET]
+  000008:[f#0,SET-f#0,SET]
+
+file-sizes
+----
+L5:
+  000004:[c#11,SET-e#11,SET]: 99326 bytes (97KB)
+  000005:[f#11,SET-f#11,SET]: 58047 bytes (57KB)
+L6:
+  000006:[c#0,SET-c#0,SET]: 66241 bytes (65KB)
+  000007:[e#0,SET-e#0,SET]: 66241 bytes (65KB)
+  000008:[f#0,SET-f#0,SET]: 66241 bytes (65KB)
+
+# Sst 5 is picked since 65KB/57KB is less than 130KB/97KB.
+pick-file L5
+----
+000005:[f#11,SET-f#11,SET]
+
+build ext1
+set d d
+----
+
+# Sst 4 is split into two virtual ssts, where the 64KB of key d is excised.
+ingest-and-excise ext1 excise=d-e
+----
+
+lsm
+----
+L5:
+  000010(000004):[c#11,SET-c#11,SET]
+  000011(000004):[e#11,SET-e#11,SET]
+  000005:[f#11,SET-f#11,SET]
+L6:
+  000006:[c#0,SET-c#0,SET]
+  000009:[d#13,SET-d#13,SET]
+  000007:[e#0,SET-e#0,SET]
+  000008:[f#0,SET-f#0,SET]
+
+file-sizes
+----
+L5:
+  000010:[c#11,SET-c#11,SET]: 32862 bytes (32KB)
+  000011:[e#11,SET-e#11,SET]: 191 bytes (191B)
+  000005:[f#11,SET-f#11,SET]: 58047 bytes (57KB)
+L6:
+  000006:[c#0,SET-c#0,SET]: 66241 bytes (65KB)
+  000009:[d#13,SET-d#13,SET]: 655 bytes (655B)
+  000007:[e#0,SET-e#0,SET]: 66241 bytes (65KB)
+  000008:[f#0,SET-f#0,SET]: 66241 bytes (65KB)
+
+# Superficially, sst 10 causes write amp of 65KB/32KB which is worse than sst
+# 5. But the garbage of ~64KB in the backing sst 4 is equally distributed
+# between sst 10 and sst 10, which results in sst 10 causing a write amp of
+# 65KB/(32KB + 32KB), which is the lowest.
+pick-file L5
+----
+000010:[c#11,SET-c#11,SET]
+
+build ext2
+set c c
+----
+
+# Remove sst 10, so the backing sst 4 is mostly garbage, and is only
+# referenced by sst 11.
+ingest-and-excise ext2 excise=b-d
+----
+
+lsm
+----
+L5:
+  000011(000004):[e#11,SET-e#11,SET]
+  000005:[f#11,SET-f#11,SET]
+L6:
+  000012:[c#15,SET-c#15,SET]
+  000009:[d#13,SET-d#13,SET]
+  000007:[e#0,SET-e#0,SET]
+  000008:[f#0,SET-f#0,SET]
+
+file-sizes
+----
+L5:
+  000011:[e#11,SET-e#11,SET]: 191 bytes (191B)
+  000005:[f#11,SET-f#11,SET]: 58047 bytes (57KB)
+L6:
+  000012:[c#15,SET-c#15,SET]: 655 bytes (655B)
+  000009:[d#13,SET-d#13,SET]: 655 bytes (655B)
+  000007:[e#0,SET-e#0,SET]: 66241 bytes (65KB)
+  000008:[f#0,SET-f#0,SET]: 66241 bytes (65KB)
+
+# Even though picking sst 11 seems to cause poor write amp of 65KB/126B, it is
+# picked because it is blamed for all the garbage in backing sst 4 (~96KB),
+# and so the actual write amp is 65KB/(126B + 96KB), which is the lowest.
+pick-file L5
+----
+000011:[e#11,SET-e#11,SET]
+
+define
+L1
+  b#11,SET:foo
+  c#11,SET:foo
+L2
+  c#0,SET:foo
+  d#0,SET:foo
+----
+L1:
+  000004:[b#11,SET-c#11,SET]
+L2:
+  000005:[c#0,SET-d#0,SET]
+
+pick-file L1
+----
+000004:[b#11,SET-c#11,SET]
+
+problem-spans
+L1 [a, bb]
+----
+
+pick-file L1
+----
+(none)
+
+pick-file L2
+----
+000005:[c#0,SET-d#0,SET]
+
+problem-spans
+L2 [c, e]
+----
+
+pick-file L2
+----
+(none)
+
+define
+L1
+  b#11,SET:foo
+  c#11,SET:foo
+L1
+  d#11,SET:foo
+  e#11,SET:foo
+L1
+  f#11,SET:foo
+  g#11,SET:foo
+L2
+  a#0,SET:foo
+  z#0,SET:foo
+----
+L1:
+  000004:[b#11,SET-c#11,SET]
+  000005:[d#11,SET-e#11,SET]
+  000006:[f#11,SET-g#11,SET]
+L2:
+  000007:[a#0,SET-z#0,SET]
+
+pick-file L1
+----
+000004:[b#11,SET-c#11,SET]
+
+problem-spans
+L1 [bb, dd)
+----
+
+pick-file L1
+----
+000006:[f#11,SET-g#11,SET]
+
+problem-spans
+L1 [b1, b2]
+----
+
+pick-file L1
+----
+000005:[d#11,SET-e#11,SET]

@@ -1,0 +1,654 @@
+# Test an L6 file that contains range tombstones, but whose keys are not in
+# the last snapshot stripe. The tombstones wouldn't be elided, so no
+# compaction is pursued.
+define snapshots=(70, 100, 180, 210)
+L6
+b#230,RANGEDEL:h h#200,RANGEDEL:r
+----
+L6:
+  000004:[b#230,RANGEDEL-r#inf,RANGEDEL]
+
+wait-pending-table-stats
+000004
+----
+num-entries: 2
+num-deletions: 2
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 0
+range-deletions-bytes-estimate: 0
+compression: None:85
+
+maybe-compact
+----
+(none)
+
+# Test the same scenario, but the file is in the last stripe. Since the file
+# only contains deletes, no new sstable is written.
+define snapshots=(270, 300, 380, 410)
+L6
+b#230,RANGEDEL:h h#200,RANGEDEL:r
+----
+L6:
+  000004:[b#230,RANGEDEL-r#inf,RANGEDEL]
+
+wait-pending-table-stats
+000004
+----
+num-entries: 2
+num-deletions: 2
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 0
+range-deletions-bytes-estimate: 0
+compression: None:85
+
+maybe-compact
+----
+[JOB 100] compacted(elision-only) L6 [000004] (649B) Score=0.00 + L6 [] (0B) Score=0.00 -> L6 [] (0B), in 1.0s (2.0s total), output rate 0B/s
+
+# Test a table that straddles a snapshot. It should not be compacted.
+define snapshots=(50) auto-compactions=off
+L6
+a#55,SET:a b#5,RANGEDEL:h
+----
+L6:
+  000004:[a#55,SET-h#inf,RANGEDEL]
+
+wait-pending-table-stats
+000004
+----
+num-entries: 2
+num-deletions: 1
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 0
+range-deletions-bytes-estimate: 0
+compression: None:87,Snappy:76/87
+
+maybe-compact
+----
+(none)
+
+# Test a table with a point deletion and a non-deletion entry. The table
+# should be compacted, and a new table with the point tombstone should be
+# written.
+define auto-compactions=off
+L6
+a#55,SET:a b#5,DEL:
+----
+L6:
+  000004:[a#55,SET-b#5,DEL]
+
+wait-pending-table-stats
+000004
+----
+num-entries: 2
+num-deletions: 1
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 3
+range-deletions-bytes-estimate: 0
+compression: None:124
+
+maybe-compact
+----
+[JOB 100] compacted(elision-only) L6 [000004] (700B) Score=0.00 + L6 [] (0B) Score=0.00 -> L6 [000005] (655B), in 1.0s (2.0s total), output rate 655B/s
+
+version
+----
+L6:
+  000005:[a#0,SET-a#0,SET]
+
+# Checking for a compaction again should not trigger a compaction, because
+# 000005 does not contain deletions.
+
+maybe-compact
+----
+(none)
+
+maybe-compact
+----
+(none)
+
+# Test a table that contains both deletions and non-deletions, but whose
+# deletions remove the non-deletions. The compaction should not create a new
+# table, but shouldn't happen until the snapshots are removed.
+define snapshots=(59, 103) auto-compactions=off
+L6
+a#60,DEL: a#55,SET:a b#100,SET:b c#101,SET:c d#102,SET:d b#103,RANGEDEL:z
+----
+L6:
+  000004:[a#60,DEL-z#inf,RANGEDEL]
+
+wait-pending-table-stats
+000004
+----
+num-entries: 6
+num-deletions: 2
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 3
+range-deletions-bytes-estimate: 101
+compression: None:87,Snappy:96/129
+
+maybe-compact
+----
+(none)
+
+close-snapshot
+59
+----
+(none)
+
+close-snapshot
+103
+----
+(none)
+
+# Test a table that contains both deletions and non-deletions, but whose
+# non-deletions well outnumber its deletions. The table should not be
+# compacted because it falls beneath the threshold.
+define snapshots=(15) auto-compactions=off
+L6
+a#20,DEL: a#1,SET:a b#2,SET:b c#3,SET:c d#4,SET:d e#5,SET:e f#6,SET:f g#7,SET:g h#8,SET:h i#9,SET:i j#10,SET:j
+----
+L6:
+  000004:[a#20,DEL-j#10,SET]
+
+wait-pending-table-stats
+000004
+----
+num-entries: 11
+num-deletions: 1
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 3
+range-deletions-bytes-estimate: 0
+compression: None:36,Snappy:131/169
+
+close-snapshot
+15
+----
+(none)
+
+# Test a table that contains both deletions and non-deletions, but whose
+# deletions remove the non-deletions. Set L5's max bytes low so that an
+# automatic compaction will be pursued when we call maybe-compact.
+# Automatic compactions need to be disabled to prevent a race where an
+# automatic compaction compacts before we've closen the snapshot.
+define snapshots=(103) level-max-bytes=(L5 : 1000) auto-compactions=off
+L5
+b#200,SET:<rand-bytes=4096> bb#203,SET:<rand-bytes=4096> cc#204,SET:<rand-bytes=4096>
+L5
+d#302,SET:<rand-bytes=4096> dd#303,SET:<rand-bytes=4096> de#303,SET:<rand-bytes=4096>
+L5
+m#320,SET:<rand-bytes=4096> n#330,SET:<rand-bytes=4096> o#340,SET:<rand-bytes=4096>
+L6
+a#55,SET:<rand-bytes=4096> b#100,SET:<rand-bytes=4096> c#101,SET:<rand-bytes=4096> d#102,SET:<rand-bytes=4096> a#103,RANGEDEL:e
+L6
+f#30,SET:<rand-bytes=4096> z#31,SET:<rand-bytes=4096>
+----
+L5:
+  000004:[b#200,SET-cc#204,SET]
+  000005:[d#302,SET-de#303,SET]
+  000006:[m#320,SET-o#340,SET]
+L6:
+  000007:[a#103,RANGEDEL-e#inf,RANGEDEL]
+  000008:[f#30,SET-z#31,SET]
+
+close-snapshot
+103
+----
+(none)
+
+wait-pending-table-stats
+000007
+----
+num-entries: 5
+num-deletions: 1
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 0
+range-deletions-bytes-estimate: 16824
+compression: None:16929
+
+# Because we set max bytes low, maybe-compact will trigger an automatic
+# compaction in preference over an elision-only compaction.
+# By plain file size, 000006 should be picked because it overlaps
+# significantly less data in L6. However, 000007 has significant obsolete
+# data. The compaction picker should recognize that it's more efficient to
+# compact (000004 + 000005) into 000007.
+
+maybe-compact
+----
+[JOB 100] compacted(default) L5 [000004 000005] (26KB) Score=88.39 + L6 [000007] (17KB) Score=0.00 -> L6 [000009] (25KB), in 1.0s (2.0s total), output rate 25KB/s
+
+define level-max-bytes=(L5 : 1000) auto-compactions=off
+L5
+a#101,DEL: b#102,DEL: c#103,DEL:
+L5
+m#107,SET:<rand-bytes=4096>
+L6
+a#001,SET:<rand-bytes=4096> b#002,SET:<rand-bytes=4096> c#003,SET:<rand-bytes=4096>
+L6
+f#007,SET:<rand-bytes=4096> x#008,SET:<rand-bytes=4096> z#009,SET:<rand-bytes=4096>
+----
+L5:
+  000004:[a#101,DEL-c#103,DEL]
+  000005:[m#107,SET-m#107,SET]
+L6:
+  000006:[a#1,SET-c#3,SET]
+  000007:[f#7,SET-z#9,SET]
+
+wait-pending-table-stats
+000004
+----
+num-entries: 3
+num-deletions: 3
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 12294
+range-deletions-bytes-estimate: 0
+compression: None:128
+
+# By plain file size, 000005 should be picked because it is larger and
+# overlaps the same amount of data in L6. However, 000004 has a high
+# point-deletions-bytes-estimate, and the compaction picker should pick 000004
+# instead.
+
+maybe-compact
+----
+[JOB 100] compacted(default) L5 [000004] (704B) Score=5.95 + L6 [000006] (13KB) Score=0.00 -> L6 [] (0B), in 1.0s (2.0s total), output rate 0B/s
+
+# A table containing only range keys is not eligible for elision.
+# RANGEKEYDEL or RANGEKEYUNSET.
+
+define auto-compactions=off
+L6
+  rangekey:a-b:{(#1,RANGEKEYDEL)}
+L6
+  rangekey:b-c:{(#2,RANGEKEYUNSET,@1)}
+L6
+  rangekey:c-d:{(#3,RANGEKEYSET,@1)}
+----
+L6:
+  000004:[a#1,RANGEKEYDEL-b#inf,RANGEKEYDEL]
+  000005:[b#2,RANGEKEYUNSET-c#inf,RANGEKEYUNSET]
+  000006:[c#3,RANGEKEYSET-d#inf,RANGEKEYSET]
+Range key set regions: [c, d)=1
+
+wait-pending-table-stats
+000004
+----
+num-entries: 0
+num-deletions: 0
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 0
+range-deletions-bytes-estimate: 0
+compression: None:79
+
+wait-pending-table-stats
+000005
+----
+num-entries: 0
+num-deletions: 0
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 0
+range-deletions-bytes-estimate: 0
+compression: None:83
+
+wait-pending-table-stats
+000006
+----
+num-entries: 0
+num-deletions: 0
+num-range-key-sets: 1
+point-deletions-bytes-estimate: 0
+range-deletions-bytes-estimate: 0
+compression: None:83
+
+maybe-compact
+----
+(none)
+
+# Regression test for cockroachdb/cockroach#90149, exercising reference counting
+# on tables that contain a mixture of point, range dels and range keys.
+#
+# Place a table in L6 that contains a RANGEKEYDEL. Because this table is in the
+# bottom of the LSM, and there are no range keys below it, the RANGEKEYDEL is
+# eligible for elision (the RANGEDEL too). After the elision, the input table
+# should be deleted. In #90149, the table still had a reference count, and
+# therefore could not be deleted from the filesystem.
+
+define auto-compactions=off
+L6
+  rangekey:a-b:{(#1,RANGEKEYDEL)}
+  a#2,SET:a
+  b#3,SET:b
+  c#4,SET:c
+  c#5,RANGEDEL:z
+----
+L6:
+  000004:[a#2,SET-z#inf,RANGEDEL]
+
+wait-pending-table-stats
+000004
+----
+num-entries: 3
+num-deletions: 1
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 0
+range-deletions-bytes-estimate: 94
+compression: None:227
+
+maybe-compact
+----
+[JOB 100] compacted(elision-only) L6 [000004] (859B) Score=0.00 + L6 [] (0B) Score=0.00 -> L6 [000005] (661B), in 1.0s (2.0s total), output rate 661B/s
+
+# Close the DB, asserting that the reference counts balance.
+close
+----
+
+# Demonstration of point tombstone weighting.
+#
+# Construct an LSM with two tables in L6, with a table above each in L5. The
+# layout of the tables is such that the range deletion bytes estimate for table
+# 000005 is greater than the point deletion bytes estimate for table 000004.
+# Without weighting, table 000005 will be selected.
+
+define auto-compactions=off level-max-bytes=(L5 : 1000)
+L5
+a#101,DEL: b#102,SET:
+L5
+e#107,RANGEDEL:f f#108,SET:
+L6
+a#001,SET:<rand-bytes=4096> b#002,SET:<rand-bytes=4096> c#003,SET:<rand-bytes=4096>
+L6
+e#007,SET:<rand-bytes=4096> f#008,SET:<rand-bytes=4096> g#009,SET:<rand-bytes=4096>
+----
+L5:
+  000004:[a#101,DEL-b#102,SET]
+  000005:[e#107,RANGEDEL-f#108,SET]
+L6:
+  000006:[a#1,SET-c#3,SET]
+  000007:[e#7,SET-g#9,SET]
+
+wait-pending-table-stats
+000004
+----
+num-entries: 2
+num-deletions: 1
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 3074
+range-deletions-bytes-estimate: 0
+compression: None:120
+
+wait-pending-table-stats
+000005
+----
+num-entries: 2
+num-deletions: 1
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 0
+range-deletions-bytes-estimate: 8380
+compression: None:87,Snappy:73/84
+
+# With multiple compactions, there is non-determinism in the output table
+# numbers, so the test overwrites them to 0.
+maybe-compact
+----
+[JOB 100] compacted(virtual-sst-rewrite) L6 [000000] (8.2KB) Score=0.00 + L6 [] (0B) Score=0.00 -> L6 [000000] (8.7KB), in 1.0s (2.0s total), output rate 8.7KB/s
+[JOB 101] compacted(delete-only) [excise] L6 [000007] (13KB) Score=0.00 -> L6 [000000] (8.2KB), in 1.0s (2.0s total), output rate 8.2KB/s
+[JOB 102] compacted(default) L5 [000004] (696B) Score=1.36 + L6 [000006] (13KB) Score=1.05 -> L6 [000000] (4.7KB), in 1.0s (2.0s total), output rate 4.7KB/s
+
+# The same LSM as above. However, this time, with point tombstone weighting at
+# 2x, the table with the point tombstone (000004) will be selected as the
+# compaction input.
+
+define auto-compactions=off level-max-bytes=(L5 : 1000) point-tombstone-weight=2
+L5
+a#101,DEL: b#102,SET:
+L5
+e#107,RANGEDEL:f f#108,SET:
+L6
+a#001,SET:<rand-bytes=4096> b#002,SET:<rand-bytes=4096> c#003,SET:<rand-bytes=4096>
+L6
+e#007,SET:<rand-bytes=4096> f#008,SET:<rand-bytes=4096> g#009,SET:<rand-bytes=4096>
+----
+L5:
+  000004:[a#101,DEL-b#102,SET]
+  000005:[e#107,RANGEDEL-f#108,SET]
+L6:
+  000006:[a#1,SET-c#3,SET]
+  000007:[e#7,SET-g#9,SET]
+
+wait-pending-table-stats
+000004
+----
+num-entries: 2
+num-deletions: 1
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 3074
+range-deletions-bytes-estimate: 0
+compression: None:120
+
+wait-pending-table-stats
+000005
+----
+num-entries: 2
+num-deletions: 1
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 0
+range-deletions-bytes-estimate: 8380
+compression: None:87,Snappy:73/84
+
+# With multiple compactions, there is non-determinism in the output table
+# numbers, so the test overwrites them to 0.
+maybe-compact
+----
+[JOB 100] compacted(virtual-sst-rewrite) L6 [000000] (8.2KB) Score=0.00 + L6 [] (0B) Score=0.00 -> L6 [000000] (8.7KB), in 1.0s (2.0s total), output rate 8.7KB/s
+[JOB 101] compacted(delete-only) [excise] L6 [000007] (13KB) Score=0.00 -> L6 [000000] (8.2KB), in 1.0s (2.0s total), output rate 8.2KB/s
+[JOB 102] compacted(default) L5 [000004] (696B) Score=1.36 + L6 [000006] (13KB) Score=1.05 -> L6 [000000] (4.7KB), in 1.0s (2.0s total), output rate 4.7KB/s
+
+
+# These tests demonstrate the behavior of the tombstone density compaction feature
+# in Pebble. This feature identifies files with a high density of tombstones and
+# prioritizes them for compaction to improve read performance.
+#
+# A file is eligible for tombstone density compaction when:
+# - Its TombstoneDenseBlocksRatio exceeds TombstoneDenseCompactionThreshold
+# - The file has valid stats
+# - The file is not already compacting
+#
+# The TombstoneDenseBlocksRatio is calculated during SSTable creation:
+# - NumTombstoneDenseBlocks / NumDataBlocks
+# - A block is considered "tombstone dense" if it meets criteria set by
+#   NumDeletionsThreshold and DeletionSizeRatioThreshold
+#
+# Furthermore, there's a performance optimization. When a tombstone density compaction:
+# - has a single input file with high tombstone density
+# - there are no overlapping files in the target level
+# - the overlapping bytes in the grandparent level are below MaxOverlapBytes
+# - The input file is not at the second lowest level L5
+# , the compaction can be optimized to simply move the file rather than rewriting it.
+#
+# The following test cases demonstrate this behavior in different scenarios.
+
+# Test Case 1: Tombstone density compaction should only be optimized to move
+# when output level is not the lowest level L6.
+# Here we create a scenario where:
+# - A file in L4 has high tombstone density
+# - There are no overlapping files in L5
+# - The overlapping bytes with L6 are below MaxOverlapBytes
+#
+# Expected behavior:
+# - The compaction type should be "move" from L4 to L5
+# - The file should be moved from L4 to L5 without rewriting
+# - L5 to L6 should still be categorized as "tombstone-density" compaction
+
+define auto-compactions=off
+L4
+a#101,DEL: b#102,DEL: c#103,DEL: d#104,SET:d e#105,SET:e
+L6
+x#001,SET:x y#002,SET:y z#003,SET:z
+----
+L4:
+  000004:[a#101,DEL-e#105,SET]
+L6:
+  000005:[x#1,SET-z#3,SET]
+
+wait-pending-table-stats
+000004
+----
+num-entries: 5
+num-deletions: 3
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 9
+range-deletions-bytes-estimate: 0
+compression: None:36,Snappy:95/108
+
+# Force a high tombstone density ratio to trigger the compaction
+# In a real scenario, this would be calculated based on the actual
+# block-level statistics during SSTable creation
+wait-pending-table-stats force-tombstone-density-ratio=0.9
+000004
+----
+num-entries: 5
+num-deletions: 3
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 9
+range-deletions-bytes-estimate: 0
+tombstone-dense-blocks-ratio: 0.9
+compression: None:36,Snappy:95/108
+
+# Now the compaction should be triggered with tombstone-density type
+# since the file has a high tombstone density. The compaction log
+# should indicate "move" as the compaction type.
+maybe-compact
+----
+[JOB 100] compacted(tombstone-density) L5 [000004] (716B) Score=0.00 + L6 [] (0B) Score=0.00 -> L6 [000000] (661B), in 1.0s (2.0s total), output rate 661B/s
+[JOB 101] compacted(move) L4 [000004] (716B) Score=0.00 + L5 [] (0B) Score=0.00 -> L5 [000000] (716B), in 1.0s (2.0s total), output rate 716B/s
+
+# Verify the result - the file should now be in L5
+# The file should maintain its original content since it was just moved rather than recompacted
+version
+----
+L6:
+  000006:[d#0,SET-e#0,SET]
+  000005:[x#1,SET-z#3,SET]
+
+# Test Case 2: Tombstone density compaction without move optimization
+# Here we create a scenario where:
+# - A file in L4 has high tombstone density
+# - Files in L5 overlap with the input file, preventing a move optimization
+#
+# Expected behavior:
+# - The compaction type should be "tombstone-density"
+# - The file must be recompacted (not moved) because of L5 overlap
+
+define auto-compactions=off
+L4
+a#101,DEL: b#102,DEL: c#103,DEL: d#104,SET:d e#105,SET:e
+L5
+c#50,SET:c d#51,SET:d
+L6
+x#001,SET:x y#002,SET:y z#003,SET:z
+----
+L4:
+  000004:[a#101,DEL-e#105,SET]
+L5:
+  000005:[c#50,SET-d#51,SET]
+L6:
+  000006:[x#1,SET-z#3,SET]
+
+wait-pending-table-stats
+000004
+----
+num-entries: 5
+num-deletions: 3
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 9
+range-deletions-bytes-estimate: 0
+compression: None:36,Snappy:95/108
+
+# Force a high tombstone density ratio to trigger the compaction
+wait-pending-table-stats force-tombstone-density-ratio=0.9
+000004
+----
+num-entries: 5
+num-deletions: 3
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 9
+range-deletions-bytes-estimate: 0
+tombstone-dense-blocks-ratio: 0.9
+compression: None:36,Snappy:95/108
+
+# A regular tombstone density compaction should be triggered (not a move optimization)
+# because there are overlapping files in L5 that prevent the optimization
+maybe-compact
+----
+[JOB 100] compacted(tombstone-density) L4 [000004] (716B) Score=0.00 + L5 [000005] (666B) Score=0.00 -> L5 [000007] (661B), in 1.0s (2.0s total), output rate 661B/s
+
+# Verify the result - the file was recompacted with the overlapping L5 file
+# The output file should be different from the input files
+version
+----
+L5:
+  000007:[d#0,SET-e#0,SET]
+L6:
+  000006:[x#1,SET-z#3,SET]
+
+# Test Case 3: Tombstone density compaction with large grandparent overlap
+# Here we create a scenario where:
+# - A file in L4 has high tombstone density
+# - There are no overlapping files in L5
+# - The overlapping bytes with L6 exceed MaxOverlapBytes (1MB of data per key)
+#
+# Expected behavior:
+# - Even with the high tombstone density ratio, the large file size of overlapping
+#   data in L6 prevents the compaction from being triggered in our test environment
+# - In a real-world scenario with proper statistics and a different configuration,
+#   this might still trigger a compaction, but our test demonstrates the impact
+#   of large overlapping sizes on compaction decisions
+
+define auto-compactions=off
+L4
+a#101,DEL: b#102,DEL: c#103,DEL: d#104,SET:d e#105,SET:e
+L6
+a#001,SET:<rand-bytes=1000000> e#002,SET:<rand-bytes=1000000>
+----
+L4:
+  000004:[a#101,DEL-e#105,SET]
+L6:
+  000005:[a#1,SET-e#2,SET]
+
+wait-pending-table-stats
+000004
+----
+num-entries: 5
+num-deletions: 3
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 1500007
+range-deletions-bytes-estimate: 0
+compression: None:36,Snappy:95/108
+
+# Force a high tombstone density ratio to trigger the compaction
+wait-pending-table-stats force-tombstone-density-ratio=0.9
+000004
+----
+num-entries: 5
+num-deletions: 3
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 1500007
+range-deletions-bytes-estimate: 0
+tombstone-dense-blocks-ratio: 0.9
+compression: None:36,Snappy:95/108
+
+# No compaction is triggered because the overlapping bytes in L6 exceed MaxOverlapBytes.
+# Pebble avoids triggering a compaction in this case to prevent excessive overlap in the
+# grandparent level, even though the file is otherwise eligible for tombstone density
+# compaction.
+maybe-compact
+----
+(none)
+
+# Verify the result - no compaction occurred with large files in L6
+version
+----
+L4:
+  000004:[a#101,DEL-e#105,SET]
+L6:
+  000005:[a#1,SET-e#2,SET]

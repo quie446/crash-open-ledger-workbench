@@ -1,0 +1,358 @@
+# Test the scenario illustrated in the below visualization.
+#
+#        ^
+#     @9 |        •―――――――――――――――○ [e,m)@9
+#   s  8 |                      • l@8
+#   u  7 |------------------------------------ @7 masking
+#   f  6 |      [h,q)@6 •―――――――――――――――――○     threshold
+#   f  5 |              • h@5
+#   f  4 |                          • n@4
+#   i  3 |          •―――――――――――○ [f,l)@3
+#   x  2 |  • b@2
+#      1 |
+#      0 |___________________________________
+#         a b c d e f g h i j k l m n o p q
+#
+
+define-spans
+e-f:{(#1,RANGEKEYSET,@9,foo)}
+f-h:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@3,bar)}
+h-l:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax) (#1,RANGEKEYSET,@3,bar)}
+l-m:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax)}
+m-q:{(#1,RANGEKEYSET,@6,bax)}
+----
+OK
+
+define-pointkeys
+b@2#1,SET
+h@5#1,SET
+l@8#1,SET
+n@4#1,SET
+----
+OK
+
+iter masking-threshold=@7
+first
+next
+next
+next
+next
+next
+next
+next
+----
+# SpanChanged(nil)
+# SpanChanged(nil)
+. b@2#1,SET: (no span)
+# SpanChanged(e-f:{(#1,RANGEKEYSET,@9,foo)})
+. e#inf,RANGEKEYSET: e-f:{(#1,RANGEKEYSET,@9,foo)}
+# SpanChanged(f-h:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@3,bar)})
+. f#inf,RANGEKEYSET: f-h:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@3,bar)}
+# SpanChanged(h-l:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax) (#1,RANGEKEYSET,@3,bar)})
+. h#inf,RANGEKEYSET: h-l:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax) (#1,RANGEKEYSET,@3,bar)}
+# SpanChanged(l-m:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax)})
+. l#inf,RANGEKEYSET: l-m:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax)}
+. l@8#1,SET: l-m:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax)}
+# SpanChanged(m-q:{(#1,RANGEKEYSET,@6,bax)})
+. m#inf,RANGEKEYSET: m-q:{(#1,RANGEKEYSET,@6,bax)}
+# SpanChanged(nil)
+.
+
+iter masking-threshold=@7
+last
+prev
+prev
+prev
+prev
+prev
+prev
+prev
+----
+# SpanChanged(nil)
+# SpanChanged(m-q:{(#1,RANGEKEYSET,@6,bax)})
+. m#inf,RANGEKEYSET: m-q:{(#1,RANGEKEYSET,@6,bax)}
+# SpanChanged(l-m:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax)})
+. l@8#1,SET: l-m:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax)}
+. l#inf,RANGEKEYSET: l-m:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax)}
+# SpanChanged(h-l:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax) (#1,RANGEKEYSET,@3,bar)})
+. h#inf,RANGEKEYSET: h-l:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax) (#1,RANGEKEYSET,@3,bar)}
+# SpanChanged(f-h:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@3,bar)})
+. f#inf,RANGEKEYSET: f-h:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@3,bar)}
+# SpanChanged(e-f:{(#1,RANGEKEYSET,@9,foo)})
+. e#inf,RANGEKEYSET: e-f:{(#1,RANGEKEYSET,@9,foo)}
+# SpanChanged(nil)
+. b@2#1,SET: (no span)
+# SpanChanged(nil)
+.
+
+iter masking-threshold=@7
+seek-ge a
+seek-ge c
+seek-ge h
+seek-ge i
+seek-ge l
+next
+seek-ge m
+seek-ge r
+----
+# SpanChanged(nil)
+# SpanChanged(nil)
+. b@2#1,SET: (no span)
+# SpanChanged(nil)
+# SpanChanged(e-f:{(#1,RANGEKEYSET,@9,foo)})
+. e#inf,RANGEKEYSET: e-f:{(#1,RANGEKEYSET,@9,foo)}
+# SpanChanged(nil)
+# SpanChanged(h-l:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax) (#1,RANGEKEYSET,@3,bar)})
+. h#inf,RANGEKEYSET: h-l:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax) (#1,RANGEKEYSET,@3,bar)}
+# SpanChanged(nil)
+# SpanChanged(h-l:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax) (#1,RANGEKEYSET,@3,bar)})
+. i#inf,RANGEKEYSET: h-l:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax) (#1,RANGEKEYSET,@3,bar)}
+# SpanChanged(nil)
+# SpanChanged(l-m:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax)})
+. l#inf,RANGEKEYSET: l-m:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax)}
+. l@8#1,SET: l-m:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax)}
+# SpanChanged(nil)
+# SpanChanged(m-q:{(#1,RANGEKEYSET,@6,bax)})
+. m#inf,RANGEKEYSET: m-q:{(#1,RANGEKEYSET,@6,bax)}
+# SpanChanged(nil)
+# SpanChanged(nil)
+.
+
+# Setting the masking threshold to @9 should result in l@8 being masked by
+# [e,m)@9.
+
+iter masking-threshold=@9
+seek-ge l
+next
+seek-lt l
+seek-lt ll
+prev
+----
+# SpanChanged(nil)
+# SpanChanged(l-m:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax)})
+. l#inf,RANGEKEYSET: l-m:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax)}
+# SpanChanged(m-q:{(#1,RANGEKEYSET,@6,bax)})
+. m#inf,RANGEKEYSET: m-q:{(#1,RANGEKEYSET,@6,bax)}
+# SpanChanged(nil)
+# SpanChanged(h-l:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax) (#1,RANGEKEYSET,@3,bar)})
+. h#inf,RANGEKEYSET: h-l:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax) (#1,RANGEKEYSET,@3,bar)}
+# SpanChanged(nil)
+# SpanChanged(l-m:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax)})
+. l#inf,RANGEKEYSET: l-m:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax)}
+# SpanChanged(h-l:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax) (#1,RANGEKEYSET,@3,bar)})
+. h#inf,RANGEKEYSET: h-l:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax) (#1,RANGEKEYSET,@3,bar)}
+
+iter masking-threshold=@9
+seek-ge l
+next
+----
+# SpanChanged(nil)
+# SpanChanged(l-m:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax)})
+. l#inf,RANGEKEYSET: l-m:{(#1,RANGEKEYSET,@9,foo) (#1,RANGEKEYSET,@6,bax)}
+# SpanChanged(m-q:{(#1,RANGEKEYSET,@6,bax)})
+. m#inf,RANGEKEYSET: m-q:{(#1,RANGEKEYSET,@6,bax)}
+
+define-spans
+a-c:{(#1,RANGEKEYSET,@5,apples) (#1,RANGEKEYSET,@2,bananas)}
+----
+OK
+
+define-pointkeys
+a#1,SET
+a@3#1,SET
+a@12#1,SET
+b@2#1,SET
+----
+OK
+
+# Test that both a@3 and b@2 are masked by the rangekey.
+# The unsuffixed point key 'a' and the point key at a higher timestamp 'a@12'
+# are not masked.
+
+iter masking-threshold=@10
+first
+next
+next
+next
+----
+# SpanChanged(nil)
+# SpanChanged(a-c:{(#1,RANGEKEYSET,@5,apples) (#1,RANGEKEYSET,@2,bananas)})
+. a#inf,RANGEKEYSET: a-c:{(#1,RANGEKEYSET,@5,apples) (#1,RANGEKEYSET,@2,bananas)}
+. a#1,SET: a-c:{(#1,RANGEKEYSET,@5,apples) (#1,RANGEKEYSET,@2,bananas)}
+. a@12#1,SET: a-c:{(#1,RANGEKEYSET,@5,apples) (#1,RANGEKEYSET,@2,bananas)}
+# SpanChanged(nil)
+.
+
+iter masking-threshold=@10
+last
+prev
+prev
+prev
+----
+# SpanChanged(nil)
+# SpanChanged(a-c:{(#1,RANGEKEYSET,@5,apples) (#1,RANGEKEYSET,@2,bananas)})
+. a@12#1,SET: a-c:{(#1,RANGEKEYSET,@5,apples) (#1,RANGEKEYSET,@2,bananas)}
+. a#1,SET: a-c:{(#1,RANGEKEYSET,@5,apples) (#1,RANGEKEYSET,@2,bananas)}
+. a#inf,RANGEKEYSET: a-c:{(#1,RANGEKEYSET,@5,apples) (#1,RANGEKEYSET,@2,bananas)}
+# SpanChanged(nil)
+.
+
+# Try the same test, but with a range key that sorts before the masking
+# threshold (eg, higher MVCC timestamp). Nothing should be masked.
+
+define-spans
+a-c:{(#2,RANGEKEYSET,@20,apples)}
+----
+OK
+
+iter masking-threshold=@10
+first
+next
+next
+next
+next
+next
+----
+# SpanChanged(nil)
+# SpanChanged(a-c:{(#2,RANGEKEYSET,@20,apples)})
+. a#inf,RANGEKEYSET: a-c:{(#2,RANGEKEYSET,@20,apples)}
+. a#1,SET: a-c:{(#2,RANGEKEYSET,@20,apples)}
+. a@3#1,SET: a-c:{(#2,RANGEKEYSET,@20,apples)}
+. a@12#1,SET: a-c:{(#2,RANGEKEYSET,@20,apples)}
+. b@2#1,SET: a-c:{(#2,RANGEKEYSET,@20,apples)}
+# SpanChanged(nil)
+.
+
+iter masking-threshold=@10
+last
+prev
+prev
+prev
+prev
+prev
+----
+# SpanChanged(nil)
+# SpanChanged(a-c:{(#2,RANGEKEYSET,@20,apples)})
+. b@2#1,SET: a-c:{(#2,RANGEKEYSET,@20,apples)}
+. a@12#1,SET: a-c:{(#2,RANGEKEYSET,@20,apples)}
+. a@3#1,SET: a-c:{(#2,RANGEKEYSET,@20,apples)}
+. a#1,SET: a-c:{(#2,RANGEKEYSET,@20,apples)}
+. a#inf,RANGEKEYSET: a-c:{(#2,RANGEKEYSET,@20,apples)}
+# SpanChanged(nil)
+.
+
+# Try the original test, but with an internal range key containing just an
+# Unset, and no Set. Nothing should be masked. No range keys should be surfaced,
+# because there are none.
+
+define-spans
+a-c:{(#1,RANGEKEYUNSET,@5) (#1,RANGEKEYUNSET,@2)}
+----
+OK
+
+iter masking-threshold=@10
+first
+next
+next
+next
+next
+----
+# SpanChanged(nil)
+# SpanChanged(a-c:{(#1,RANGEKEYUNSET,@5) (#1,RANGEKEYUNSET,@2)})
+. a#inf,RANGEKEYUNSET: a-c:{(#1,RANGEKEYUNSET,@5) (#1,RANGEKEYUNSET,@2)}
+. a#1,SET: a-c:{(#1,RANGEKEYUNSET,@5) (#1,RANGEKEYUNSET,@2)}
+. a@12#1,SET: a-c:{(#1,RANGEKEYUNSET,@5) (#1,RANGEKEYUNSET,@2)}
+# SpanChanged(nil)
+.
+# SpanChanged(nil)
+.
+
+iter masking-threshold=@10
+last
+prev
+prev
+prev
+prev
+----
+# SpanChanged(nil)
+# SpanChanged(a-c:{(#1,RANGEKEYUNSET,@5) (#1,RANGEKEYUNSET,@2)})
+. a@12#1,SET: a-c:{(#1,RANGEKEYUNSET,@5) (#1,RANGEKEYUNSET,@2)}
+. a#1,SET: a-c:{(#1,RANGEKEYUNSET,@5) (#1,RANGEKEYUNSET,@2)}
+. a#inf,RANGEKEYUNSET: a-c:{(#1,RANGEKEYUNSET,@5) (#1,RANGEKEYUNSET,@2)}
+# SpanChanged(nil)
+.
+# SpanChanged(nil)
+.
+
+# Test a scenario where a point key is masked in the forward direction, which in
+# turn requires nexting to the next range key as well.
+
+define-spans
+a-c:{(#1,RANGEKEYSET,@5,apples)}
+c-z:{(#1,RANGEKEYSET,@10,bananas)}
+----
+OK
+
+define-pointkeys
+b@3#2,SET
+d@9#4,SET
+j@11#3,SET
+----
+OK
+
+iter masking-threshold=@20
+first
+next
+next
+----
+# SpanChanged(nil)
+# SpanChanged(a-c:{(#1,RANGEKEYSET,@5,apples)})
+. a#inf,RANGEKEYSET: a-c:{(#1,RANGEKEYSET,@5,apples)}
+# SpanChanged(c-z:{(#1,RANGEKEYSET,@10,bananas)})
+. c#inf,RANGEKEYSET: c-z:{(#1,RANGEKEYSET,@10,bananas)}
+. j@11#3,SET: c-z:{(#1,RANGEKEYSET,@10,bananas)}
+
+iter masking-threshold=@20
+last
+prev
+prev
+----
+# SpanChanged(nil)
+# SpanChanged(c-z:{(#1,RANGEKEYSET,@10,bananas)})
+. j@11#3,SET: c-z:{(#1,RANGEKEYSET,@10,bananas)}
+. c#inf,RANGEKEYSET: c-z:{(#1,RANGEKEYSET,@10,bananas)}
+# SpanChanged(a-c:{(#1,RANGEKEYSET,@5,apples)})
+. a#inf,RANGEKEYSET: a-c:{(#1,RANGEKEYSET,@5,apples)}
+
+# Test a scenario where a there's an empty range key, requiring the interleaving
+# iter to call SpanChanged(nil) which should clear the previous mask.
+
+define-spans
+a-c:{(#1,RANGEKEYSET,@10,apples)}
+c-e:{}
+e-f:{(#1,RANGEKEYSET,@5,bananas)}
+----
+OK
+
+define-pointkeys
+a@2#4,SET
+b@9#2,SET
+d@9#3,SET
+----
+OK
+
+iter masking-threshold=@20
+seek-ge a
+next
+next
+next
+----
+# SpanChanged(nil)
+# SpanChanged(a-c:{(#1,RANGEKEYSET,@10,apples)})
+. a#inf,RANGEKEYSET: a-c:{(#1,RANGEKEYSET,@10,apples)}
+# SpanChanged(nil)
+. d@9#3,SET: (no span)
+# SpanChanged(e-f:{(#1,RANGEKEYSET,@5,bananas)})
+. e#inf,RANGEKEYSET: e-f:{(#1,RANGEKEYSET,@5,bananas)}
+# SpanChanged(nil)
+.

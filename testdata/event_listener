@@ -1,0 +1,639 @@
+open
+----
+mkdir-all: db 0755
+open-dir: .
+sync: .
+close: .
+open-dir: db
+close: db
+mkdir-all: wal 0755
+open-dir: .
+sync: .
+close: .
+open-dir: wal
+close: wal
+open-dir: db
+lock: db/LOCK
+lock: wal/LOCK
+open-dir: db
+open-dir: db
+open-dir: db
+create: db/MANIFEST-000001
+sync: db/MANIFEST-000001
+sync: db
+create: db/marker.manifest.000001.MANIFEST-000001
+sync: db/marker.manifest.000001.MANIFEST-000001
+close: db/marker.manifest.000001.MANIFEST-000001
+sync: db
+[JOB 1] MANIFEST created 000001
+open-dir: wal
+create: db/temporary.000002.dbtmp
+sync: db/temporary.000002.dbtmp
+close: db/temporary.000002.dbtmp
+rename: db/temporary.000002.dbtmp -> db/OPTIONS-000002
+sync: db
+create: wal/000003.log
+sync: wal
+[JOB 1] WAL created 000003
+create: db/marker.format-version.000001.014
+sync: db/marker.format-version.000001.014
+close: db/marker.format-version.000001.014
+sync: db
+upgraded to format version: 014
+create: db/marker.format-version.000002.015
+sync: db/marker.format-version.000002.015
+close: db/marker.format-version.000002.015
+remove: db/marker.format-version.000001.014
+sync: db
+upgraded to format version: 015
+create: db/marker.format-version.000003.016
+sync: db/marker.format-version.000003.016
+close: db/marker.format-version.000003.016
+remove: db/marker.format-version.000002.015
+sync: db
+upgraded to format version: 016
+create: db/marker.format-version.000004.017
+sync: db/marker.format-version.000004.017
+close: db/marker.format-version.000004.017
+remove: db/marker.format-version.000003.016
+sync: db
+upgraded to format version: 017
+create: db/marker.format-version.000005.018
+sync: db/marker.format-version.000005.018
+close: db/marker.format-version.000005.018
+remove: db/marker.format-version.000004.017
+sync: db
+upgraded to format version: 018
+create: db/marker.format-version.000006.019
+sync: db/marker.format-version.000006.019
+close: db/marker.format-version.000006.019
+remove: db/marker.format-version.000005.018
+sync: db
+upgraded to format version: 019
+create: db/marker.format-version.000007.020
+sync: db/marker.format-version.000007.020
+close: db/marker.format-version.000007.020
+remove: db/marker.format-version.000006.019
+sync: db
+upgraded to format version: 020
+create: db/marker.format-version.000008.021
+sync: db/marker.format-version.000008.021
+close: db/marker.format-version.000008.021
+remove: db/marker.format-version.000007.020
+sync: db
+upgraded to format version: 021
+create: db/marker.format-version.000009.022
+sync: db/marker.format-version.000009.022
+close: db/marker.format-version.000009.022
+remove: db/marker.format-version.000008.021
+sync: db
+upgraded to format version: 022
+create: db/marker.format-version.000010.023
+sync: db/marker.format-version.000010.023
+close: db/marker.format-version.000010.023
+remove: db/marker.format-version.000009.022
+sync: db
+upgraded to format version: 023
+create: db/marker.format-version.000011.024
+sync: db/marker.format-version.000011.024
+close: db/marker.format-version.000011.024
+remove: db/marker.format-version.000010.023
+sync: db
+upgraded to format version: 024
+create: db/marker.format-version.000012.025
+sync: db/marker.format-version.000012.025
+close: db/marker.format-version.000012.025
+remove: db/marker.format-version.000011.024
+sync: db
+upgraded to format version: 025
+create: db/marker.format-version.000013.026
+sync: db/marker.format-version.000013.026
+close: db/marker.format-version.000013.026
+remove: db/marker.format-version.000012.025
+sync: db
+upgraded to format version: 026
+create: db/marker.format-version.000014.027
+sync: db/marker.format-version.000014.027
+close: db/marker.format-version.000014.027
+remove: db/marker.format-version.000013.026
+sync: db
+upgraded to format version: 027
+create: db/marker.format-version.000015.028
+sync: db/marker.format-version.000015.028
+close: db/marker.format-version.000015.028
+remove: db/marker.format-version.000014.027
+sync: db
+upgraded to format version: 028
+create: db/marker.format-version.000016.029
+sync: db/marker.format-version.000016.029
+close: db/marker.format-version.000016.029
+remove: db/marker.format-version.000015.028
+sync: db
+upgraded to format version: 029
+create: db/marker.format-version.000017.030
+sync: db/marker.format-version.000017.030
+close: db/marker.format-version.000017.030
+remove: db/marker.format-version.000016.029
+sync: db
+upgraded to format version: 030
+get-disk-usage: db
+
+flush
+----
+sync-data: wal/000003.log
+sync-data: wal/000003.log
+close: wal/000003.log
+create: wal/000004.log
+sync: wal
+[JOB 3] WAL created 000004
+[JOB 4] flushing 1 memtable (100B) to L0
+create: db/000005.sst
+[JOB 4] flushing: sstable created 000005
+sync-data: db/000005.sst
+close: db/000005.sst
+sync: db
+get-disk-usage: db
+create: db/MANIFEST-000006
+close: db/MANIFEST-000001
+sync: db
+sync: db/MANIFEST-000006
+create: db/marker.manifest.000002.MANIFEST-000006
+sync: db/marker.manifest.000002.MANIFEST-000006
+close: db/marker.manifest.000002.MANIFEST-000006
+remove: db/marker.manifest.000001.MANIFEST-000001
+sync: db
+[JOB 4] MANIFEST created 000006
+[JOB 4] flushed 1 memtable (100B) to L0 [000005] (688B), in 1.0s (3.0s total), output rate 688B/s
+
+compact
+----
+sync-data: wal/000004.log
+sync-data: wal/000004.log
+close: wal/000004.log
+reuseForWrite: wal/000003.log -> wal/000007.log
+sync: wal
+[JOB 5] WAL created 000007 (recycled 000003)
+[JOB 6] flushing 1 memtable (100B) to L0
+create: db/000008.sst
+[JOB 6] flushing: sstable created 000008
+sync-data: db/000008.sst
+close: db/000008.sst
+sync: db
+get-disk-usage: db
+create: db/MANIFEST-000009
+close: db/MANIFEST-000006
+sync: db
+sync: db/MANIFEST-000009
+create: db/marker.manifest.000003.MANIFEST-000009
+sync: db/marker.manifest.000003.MANIFEST-000009
+close: db/marker.manifest.000003.MANIFEST-000009
+remove: db/marker.manifest.000002.MANIFEST-000006
+sync: db
+[JOB 6] MANIFEST created 000009
+[JOB 6] flushed 1 memtable (100B) to L0 [000008] (688B), in 1.0s (3.0s total), output rate 688B/s
+remove: db/MANIFEST-000001
+[JOB 6] MANIFEST deleted 000001
+[JOB 7] compacting(default) L0 [000005 000008] (1.3KB) Score=0.00 + L6 [] (0B) Score=0.00; OverlappingRatio: Single 0.00, Multi 0.00
+open: db/000005.sst (options: *vfs.randomReadsOption)
+read-at(627, 61): db/000005.sst
+read-at(577, 50): db/000005.sst
+read-at(119, 458): db/000005.sst
+open: db/000008.sst (options: *vfs.randomReadsOption)
+read-at(627, 61): db/000008.sst
+read-at(577, 50): db/000008.sst
+read-at(119, 458): db/000008.sst
+open: db/000005.sst (options: *vfs.sequentialReadsOption)
+read-at(78, 41): db/000005.sst
+read-at(0, 78): db/000005.sst
+open: db/000008.sst (options: *vfs.sequentialReadsOption)
+read-at(78, 41): db/000008.sst
+read-at(0, 78): db/000008.sst
+close: db/000008.sst
+close: db/000005.sst
+create: db/000010.sst
+[JOB 7] compacting: sstable created 000010
+sync-data: db/000010.sst
+close: db/000010.sst
+sync: db
+get-disk-usage: db
+create: db/MANIFEST-000011
+close: db/MANIFEST-000009
+sync: db
+sync: db/MANIFEST-000011
+create: db/marker.manifest.000004.MANIFEST-000011
+sync: db/marker.manifest.000004.MANIFEST-000011
+close: db/marker.manifest.000004.MANIFEST-000011
+remove: db/marker.manifest.000003.MANIFEST-000009
+sync: db
+[JOB 7] MANIFEST created 000011
+[JOB 7] compacted(default) write-blobs-input-depth-zero L0 [000005 000008] (1.3KB) Score=0.00 + L6 [] (0B) Score=0.00 -> L6 [000010] (683B), in 1.0s (4.0s total), output rate 683B/s
+close: db/000005.sst
+close: db/000008.sst
+remove: db/MANIFEST-000006
+[JOB 7] MANIFEST deleted 000006
+remove: db/000005.sst
+[JOB 7] sstable deleted 000005
+remove: db/000008.sst
+[JOB 7] sstable deleted 000008
+
+disable-file-deletions
+----
+
+flush
+----
+sync-data: wal/000007.log
+sync-data: wal/000007.log
+close: wal/000007.log
+reuseForWrite: wal/000004.log -> wal/000012.log
+sync: wal
+[JOB 8] WAL created 000012 (recycled 000004)
+[JOB 9] flushing 1 memtable (100B) to L0
+create: db/000013.sst
+[JOB 9] flushing: sstable created 000013
+sync-data: db/000013.sst
+close: db/000013.sst
+sync: db
+get-disk-usage: db
+create: db/MANIFEST-000014
+close: db/MANIFEST-000011
+sync: db
+sync: db/MANIFEST-000014
+create: db/marker.manifest.000005.MANIFEST-000014
+sync: db/marker.manifest.000005.MANIFEST-000014
+close: db/marker.manifest.000005.MANIFEST-000014
+remove: db/marker.manifest.000004.MANIFEST-000011
+sync: db
+[JOB 9] MANIFEST created 000014
+[JOB 9] flushed 1 memtable (100B) to L0 [000013] (688B), in 1.0s (3.0s total), output rate 688B/s
+
+enable-file-deletions
+----
+remove: db/MANIFEST-000009
+[JOB 10] MANIFEST deleted 000009
+
+ingest
+----
+open: ext/0
+read-at(591, 61): ext/0
+read-at(541, 50): ext/0
+read-at(122, 419): ext/0
+read-at(122, 419): ext/0
+read-at(81, 41): ext/0
+read-at(0, 81): ext/0
+close: ext/0
+link: ext/0 -> db/000015.sst
+[JOB 11] ingesting: sstable created 000015
+sync: db
+create: db/MANIFEST-000016
+close: db/MANIFEST-000014
+sync: db
+sync: db/MANIFEST-000016
+create: db/marker.manifest.000006.MANIFEST-000016
+sync: db/marker.manifest.000006.MANIFEST-000016
+close: db/marker.manifest.000006.MANIFEST-000016
+remove: db/marker.manifest.000005.MANIFEST-000014
+sync: db
+[JOB 11] MANIFEST created 000016
+remove: db/MANIFEST-000011
+[JOB 11] MANIFEST deleted 000011
+remove: ext/0
+[JOB 11] ingested L0:000015 (652B); manifest update took 0.1s; block reads took 0.3s with 7.7KB block bytes read
+
+metrics
+----
+----
+LSM                             |    vtables   |   value sep   |        |   ingested   |    amp
+level       size | tables  size |  count  size |  refsz valblk |     in | tables  size |   r     w
+-----------------+--------------+--------------+---------------+--------+--------------+----------
+   L0      1.3KB |      2 1.3KB |      0     0 |     0B     0B |    97B |      1  652B |   2 21.28
+   L6       683B |      1  683B |      0     0 |     0B     0B |  1.3KB |      0    0B |   1  0.50
+-----------------+--------------+--------------+---------------+--------+--------------+----------
+total        2KB |      3   2KB |      0     0 |     0B     0B |   749B |      1  652B |   3  4.67
+
+COMPACTIONS               |     moved    |     multilevel    |     read     |       written
+level | score    ff   cff | tables  size |   top    in  read | tables  blob | tables  sstsz blobsz
+------+-------------------+--------------+-------------------+--------------+---------------------
+   L0 |     -  0.40  0.40 |      0    0B |    0B    0B    0B |     0B    0B |      3    2KB     0B
+   L6 |     -  0.00  0.00 |      0    0B |    0B    0B    0B |  1.2KB    0B |      1   683B     0B
+------+-------------------+--------------+-------------------+--------------+---------------------
+total |     -     -     - |      0    0B |    0B    0B    0B |  1.2KB    0B |      4  3.4KB     0B
+
+ kind | default  delete  elision  move  read  tomb  rewrite  copy  multi  blob virtual
+count |       1       0        0     0     0     0        0     0      0     0       0
+
+COMMIT PIPELINE
+               wals                |              memtables              |       ingestions
+    files |    written |  overhead |   flushes |       live |     zombie |     total |   flushable
+----------+------------+-----------+-----------+------------+------------+-----------+------------
+   1 (0B) |   48B: 97B |    102.1% |         3 |  1 (256KB) |  1 (256KB) |         1 |      0 (0B)
+
+BLOCK CACHE: 2 entries (672B)
+                 miss rate [percentage of total misses] since start
+level      all     |  background    sstdata       sstval      blobval       filter       index
+-------------------+------------------------------------------------------------------------------
+ n/a   100% [69%]  |              100% [7.7%]                                          100% [62%]
+  L0   100% [31%]  |  100% [31%]
+-------------------+------------------------------------------------------------------------------
+total     100%     |  100% [31%]  100% [7.7%]                                          100% [62%]
+
+ITERATORS
+        file cache        |    filter   |    open     |    open
+     entries |   hit rate | utilization |  sst iters  |  snapshots
+-------------+------------+-------------+-------------+------------
+      0 (0B) |      50.0% |        0.0% |           0 |           0
+
+FILES                 physical tables                 |                blob files
+          |     local        shared        remote     |     local        shared        remote
+----------+-------------------------------------------+------------------------------------------
+     live |    3 (2KB)       0 (0B)        0 (0B)     |    0 (0B)        0 (0B)        0 (0B)
+   zombie |    0 (0B)        0 (0B)        0 (0B)     |    0 (0B)        0 (0B)        0 (0B)
+ obsolete |    0 (0B)        0 (0B)        0 (0B)     |    0 (0B)        0 (0B)        0 (0B)
+
+MISC            |
+----------------+--------
+table stats     | loading
+table garbage   |
+  point del     | 0B
+  range del     | 0B
+blob values     |
+  total         | 0B
+  refed         | 0B
+  backing-refed | 0B
+
+CGO MEMORY    |          block cache           |                     memtables
+          tot |           tot |           data |            maps |            ents |           tot
+--------------+---------------+----------------+-----------------+-----------------+--------------
+           0B |            0B |             0B |              0B |              0B |            0B
+
+COMPACTIONS
+                                                                         |      blob rewrites
+    est. debt |   in progress |  cancelled |   failed |    problem spans |       read |    written
+--------------+---------------+------------+----------+------------------+------------+-----------
+          2KB |        0 (0B) |     0 (0B) |        0 |                0 |         0B |         0B
+
+KEYS
+      range keys |       tombstones |      missized tombstones |      point dels |      range dels
+-----------------+------------------+--------------------------+-----------------+----------------
+               0 |                0 |                        0 |              0B |              0B
+
+COMPRESSION
+    algorithm |        tables |    blob files
+--------------+---------------+--------------
+         none |          260B |
+       snappy | 73B (CR=1.15) |
+
+        Logical bytes compressed / decompressed
+level |  data blocks   |  value blocks  |  other blocks
+------+----------------+----------------+---------------
+L0-L4 |  252B / 168B   |    0B / 0B     |  2KB / 2.4KB
+   L6 |    76B / 0B    |    0B / 0B     |   669B / 0B
+
+DELETE PACER   |   in queue   |   deleted
+---------------+--------------+-------------
+        tables |    0 (0B)    |    0 (0B)
+    blob files |    0 (0B)    |    0 (0B)
+   other files |    0 (0B)    |    0 (0B)
+----
+----
+
+# Set up a scenario where the table to be ingested overlaps with the memtable.
+# The table is ingested as a flushable. The flush metrics refect the flushed
+# ingestion.
+
+ingest-flushable
+----
+sync-data: wal/000012.log
+open: ext/a
+read-at(591, 61): ext/a
+read-at(541, 50): ext/a
+read-at(122, 419): ext/a
+read-at(122, 419): ext/a
+read-at(81, 41): ext/a
+read-at(0, 81): ext/a
+close: ext/a
+open: ext/b
+read-at(591, 61): ext/b
+read-at(541, 50): ext/b
+read-at(122, 419): ext/b
+read-at(122, 419): ext/b
+read-at(81, 41): ext/b
+read-at(0, 81): ext/b
+close: ext/b
+link: ext/a -> db/000017.sst
+[JOB 12] ingesting: sstable created 000017
+link: ext/b -> db/000018.sst
+[JOB 12] ingesting: sstable created 000018
+sync: db
+sync-data: wal/000012.log
+close: wal/000012.log
+reuseForWrite: wal/000007.log -> wal/000019.log
+sync: wal
+[JOB 13] WAL created 000019 (recycled 000007)
+sync-data: wal/000019.log
+sync-data: wal/000019.log
+close: wal/000019.log
+create: wal/000020.log
+sync: wal
+[JOB 14] WAL created 000020
+remove: ext/a
+remove: ext/b
+[JOB 12] ingested as flushable, memtable flushes took 0.2s: 000017 (652B), 000018 (652B); manifest update took 0.1s; block reads took 0.3s with 7.7KB block bytes read
+sync-data: wal/000020.log
+close: wal/000020.log
+create: wal/000021.log
+sync: wal
+[JOB 15] WAL created 000021
+[JOB 16] flushing 1 memtable (100B) to L0
+create: db/000022.sst
+[JOB 16] flushing: sstable created 000022
+sync-data: db/000022.sst
+close: db/000022.sst
+sync: db
+get-disk-usage: db
+sync: db/MANIFEST-000016
+[JOB 16] flushed 1 memtable (100B) to L0 [000022] (688B), in 1.0s (3.0s total), output rate 688B/s
+[JOB 17] flushing 2 ingested tables
+create: db/MANIFEST-000023
+close: db/MANIFEST-000016
+sync: db
+sync: db/MANIFEST-000023
+create: db/marker.manifest.000007.MANIFEST-000023
+sync: db/marker.manifest.000007.MANIFEST-000023
+close: db/marker.manifest.000007.MANIFEST-000023
+remove: db/marker.manifest.000006.MANIFEST-000016
+sync: db
+[JOB 17] MANIFEST created 000023
+[JOB 17] flushed 2 ingested flushables L0:000017 (652B) + L6:000018 (652B) in 1.0s (3.0s total), output rate 1.3KB/s
+remove: db/MANIFEST-000014
+[JOB 17] MANIFEST deleted 000014
+[JOB 18] flushing 1 memtable (100B) to L0
+get-disk-usage: db
+sync: db/MANIFEST-000023
+[JOB 18] flush error: pebble: empty table
+
+metrics
+----
+----
+LSM                             |    vtables   |   value sep   |        |   ingested   |    amp
+level       size | tables  size |  count  size |  refsz valblk |     in | tables  size |   r     w
+-----------------+--------------+--------------+---------------+--------+--------------+----------
+   L0      2.6KB |      4 2.6KB |      0     0 |     0B     0B |   132B |      2 1.3KB |   4 20.85
+   L6      1.3KB |      2 1.3KB |      0     0 |     0B     0B |  1.3KB |      1  652B |   1  0.50
+-----------------+--------------+--------------+---------------+--------+--------------+----------
+total      3.9KB |      6 3.9KB |      0     0 |     0B     0B |    2KB |      3 1.9KB |   5  2.65
+
+COMPACTIONS               |     moved    |     multilevel    |     read     |       written
+level | score    ff   cff | tables  size |   top    in  read | tables  blob | tables  sstsz blobsz
+------+-------------------+--------------+-------------------+--------------+---------------------
+   L0 |     -  0.80  0.80 |      0    0B |    0B    0B    0B |     0B    0B |      4  2.7KB     0B
+   L6 |     -  0.00  0.00 |      0    0B |    0B    0B    0B |  1.2KB    0B |      1   683B     0B
+------+-------------------+--------------+-------------------+--------------+---------------------
+total |     -     -     - |      0    0B |    0B    0B    0B |  1.2KB    0B |      5  5.4KB     0B
+
+ kind | default  delete  elision  move  read  tomb  rewrite  copy  multi  blob virtual
+count |       1       0        0     0     0     0        0     0      0     0       0
+
+COMMIT PIPELINE
+               wals                |              memtables              |       ingestions
+    files |    written |  overhead |   flushes |       live |     zombie |     total |   flushable
+----------+------------+-----------+-----------+------------+------------+-----------+------------
+   1 (0B) |  82B: 132B |     61.0% |         6 |  1 (512KB) |  1 (512KB) |         2 |   1 (1.3KB)
+
+BLOCK CACHE: 6 entries (2KB)
+                 miss rate [percentage of total misses] since start
+level      all     |  background    sstdata       sstval      blobval       filter       index
+-------------------+------------------------------------------------------------------------------
+ n/a   100% [83%]  |               100% [13%]                                          100% [70%]
+  L0   100% [17%]  |  100% [17%]
+-------------------+------------------------------------------------------------------------------
+total     100%     |  100% [17%]   100% [13%]                                          100% [70%]
+
+ITERATORS
+        file cache        |    filter   |    open     |    open
+     entries |   hit rate | utilization |  sst iters  |  snapshots
+-------------+------------+-------------+-------------+------------
+      0 (0B) |      50.0% |        0.0% |           0 |           0
+
+FILES                 physical tables                 |                blob files
+          |     local        shared        remote     |     local        shared        remote
+----------+-------------------------------------------+------------------------------------------
+     live |   6 (3.9KB)      0 (0B)        0 (0B)     |    0 (0B)        0 (0B)        0 (0B)
+   zombie |    0 (0B)        0 (0B)        0 (0B)     |    0 (0B)        0 (0B)        0 (0B)
+ obsolete |    0 (0B)        0 (0B)        0 (0B)     |    0 (0B)        0 (0B)        0 (0B)
+
+MISC            |
+----------------+--------
+table stats     | loading
+table garbage   |
+  point del     | 0B
+  range del     | 0B
+blob values     |
+  total         | 0B
+  refed         | 0B
+  backing-refed | 0B
+
+CGO MEMORY    |          block cache           |                     memtables
+          tot |           tot |           data |            maps |            ents |           tot
+--------------+---------------+----------------+-----------------+-----------------+--------------
+           0B |            0B |             0B |              0B |              0B |            0B
+
+COMPACTIONS
+                                                                         |      blob rewrites
+    est. debt |   in progress |  cancelled |   failed |    problem spans |       read |    written
+--------------+---------------+------------+----------+------------------+------------+-----------
+        3.9KB |        0 (0B) |     0 (0B) |        0 |                0 |         0B |         0B
+
+KEYS
+      range keys |       tombstones |      missized tombstones |      point dels |      range dels
+-----------------+------------------+--------------------------+-----------------+----------------
+               0 |                0 |                        0 |              0B |              0B
+
+COMPRESSION
+    algorithm |         tables |    blob files
+--------------+----------------+--------------
+         none |           520B |
+       snappy | 146B (CR=1.15) |
+
+        Logical bytes compressed / decompressed
+level |  data blocks   |  value blocks  |  other blocks
+------+----------------+----------------+---------------
+L0-L4 |  336B / 168B   |    0B / 0B     | 2.7KB / 4.8KB
+   L6 |    76B / 0B    |    0B / 0B     |   669B / 0B
+
+DELETE PACER   |   in queue   |   deleted
+---------------+--------------+-------------
+        tables |    0 (0B)    |    0 (0B)
+    blob files |    0 (0B)    |    0 (0B)
+   other files |    0 (0B)    |    0 (0B)
+----
+----
+
+sstables
+----
+0:
+  13:[a-a]
+  15:[a-a]
+  22:[a-a]
+  17:[a-a]
+6:
+  10:[a-a]
+  18:[b-b]
+
+checkpoint
+----
+mkdir-all: checkpoint 0755
+open-dir: .
+sync: .
+close: .
+open-dir: checkpoint
+open: db/OPTIONS-000002
+create: checkpoint/OPTIONS-000002
+sync-data: checkpoint/OPTIONS-000002
+close: checkpoint/OPTIONS-000002
+close: db/OPTIONS-000002
+open-dir: checkpoint
+create: checkpoint/marker.format-version.000001.030
+sync-data: checkpoint/marker.format-version.000001.030
+close: checkpoint/marker.format-version.000001.030
+sync: checkpoint
+close: checkpoint
+link: db/000013.sst -> checkpoint/000013.sst
+link: db/000015.sst -> checkpoint/000015.sst
+link: db/000022.sst -> checkpoint/000022.sst
+link: db/000017.sst -> checkpoint/000017.sst
+link: db/000010.sst -> checkpoint/000010.sst
+link: db/000018.sst -> checkpoint/000018.sst
+open: db/MANIFEST-000023 (options: *vfs.sequentialReadsOption)
+create: checkpoint/MANIFEST-000023
+sync-data: checkpoint/MANIFEST-000023
+close: checkpoint/MANIFEST-000023
+close: db/MANIFEST-000023
+open-dir: checkpoint
+sync: checkpoint
+create: checkpoint/marker.manifest.000001.MANIFEST-000023
+sync-data: checkpoint/marker.manifest.000001.MANIFEST-000023
+close: checkpoint/marker.manifest.000001.MANIFEST-000023
+sync: checkpoint
+close: checkpoint
+create: checkpoint/000021.log
+open: wal/000021.log (options: *vfs.sequentialReadsOption)
+close: wal/000021.log
+sync-data: checkpoint/000021.log
+close: checkpoint/000021.log
+sync: checkpoint
+close: checkpoint
+
+enable-file-deletions
+----
+pebble: file deletion disablement invariant violated
+
+close
+----
+close: db
+sync-data: wal/000021.log
+close: wal/000021.log
+close: wal
+close: db/MANIFEST-000023
+close: db
+close: db
+close: db

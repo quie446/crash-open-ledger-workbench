@@ -1,0 +1,62 @@
+# Test treesteps recording for levelIter SeekGE operation.
+# This test creates a DB with multiple sstables in L6 and performs a SeekGE
+# operation while recording the operation steps with treesteps.
+
+define
+L1
+  a#10,SET:va
+  b#10,SET:vb
+  c#10,SET:vc
+L1
+  d#5,SET:vd
+  d@10#5,SET:vd10
+  d@20#5,SET:vd20
+  e#5,SET:ve
+  f#5,SET:vf
+L1
+  g#1,SET:vg
+  h#1,SET:vh
+  i#1,SET:vi
+----
+L1:
+  000004:[a#10,SET-c#10,SET] seqnums:[#10-#10] points:[a#10,SET-c#10,SET] size:700
+  000005:[d#5,SET-f#5,SET] seqnums:[#5-#5] points:[d#5,SET-f#5,SET] size:831
+  000006:[g#1,SET-i#1,SET] seqnums:[#1-#1] points:[g#1,SET-i#1,SET] size:697
+
+level-iter depth=1
+seek-ge b
+next
+next
+next
+next
+next
+next
+next
+----
+b#10,SET:vb
+c#10,SET:vc
+d#5,SET:vd
+d@20#5,SET:vd20
+d@10#5,SET:vd10
+e#5,SET:ve
+f#5,SET:vf
+g#1,SET:vg
+https://raduberinde.github.io/treesteps/decode.html#eNrslkFr2zAUx-_7FA_l0kJY7W3JwVDYpRuD0kt3m8tQ7OdOTJOD9TYGY1B22GWXHfI59qHySYaVBiWuPEwsgRbqU3iS_-_v_09S9I1d8U_IMkaoqeTEz6hB1IRLfSbxC8r3grBhU3ZNuGynapa9Y0IJEly2ZcSPry-gVmBmvyFsQBNvCEs2Zaou0Q5kUAmJkLTPC5A1L80kK6E18YXEp1qoW4mX2_c41Q1UQgn9ofOC7bkzfIVfqc_Qdmxgp4dSYfr05zSzOb0SjY7R_GOf_3VxzYMsrpvNYWEOCjt8meaKTfcKAOufv2Gzm09ytsjZ6bA5sF79MJ-R3R8mprRar-7Wq7t_fUGu4P5RNcGy1oJErbC09X3VoGYcanAOi0maTK8v3m4tteqcMme903VT__VniO_9TmPz9GeyXVcnp8dlaVcGzqHoIVx4crrfwleORXxoi-jQ5p-T5HmhhDQ_cNeY-8DxZ3kW5AychXKxkTH_Oia5cjJz7QlHudNt6JawSmOD8-ztqBx1Q3_5LOkB6xw5lO2umLcwvTk8NlMP0k97Iac-IachIKcxQk6jg4xuwugNL3pni9GBxdioVm6qlTeqlXeqVXRUq9iojr2FjrA8D3ILnYdy0b2F3k5S135wlDvdhu4HqzQ2uIO83Xx_8jcAAP__21ySwg==
+
+level-iter depth=1
+seek-prefix-ge d@10
+next
+----
+d@10#5,SET:vd10
+.
+https://raduberinde.github.io/treesteps/decode.html#eNrcks9KAzEQxu8-xTBeWljsFulloeCliFCKUG-mSDRTDcakbEYpiFA8ePHiYZ_Dh9onkU1bt11bqbV4MKcwf77vl2_3EXvyjjBBJs9KsmxwSuSZRr5h6IHMhWZKMcI-06gY9Zico7aatTRFmej2NKWhHh93wFkIOydMKXiWKZPCCK1TVDYSGGpDEBenBcZJFYaqQt6zvDR04LW9NtSdb0t2KQy11f5m5VrpvzDUozGvg5v3NvT7KvXZHExDCgGV7W5TWIyWCgD5yxssktcEKoERCFRHzVhgfbsdyLPnkG4yizeUsjyb5NnkuxcKC7NjHcPIec3aWVJlfVn1T-E2UIc2FLf9VtTvnM2hCz_JyZpOhWRaf33f5m1V999-hV2CF_9rrf7foBZloA3iPo4Pr6w24UJVZNoN70qjXcX6I8bB095HAAAA__9lifGV
+
+level-iter depth=1
+seek-ge d@10
+next-prefix
+next-prefix
+----
+d@10#5,SET:vd10
+e#5,SET:ve
+f#5,SET:vf
+https://raduberinde.github.io/treesteps/decode.html#eNrMUkFL80AQvX-_YpjvohBse-glUPBSRChFqDdTZGUnurjult1BCiIUD168eMjv8Efll8imLWtKWyom0JzCzNv33sy8FxyLJ8IUmTxLwaLDjsgzzXxH0zPpW8XkMMEJ0yxAPaY3qIxiJXQoEz1eDMEaqNCXTA48C8ckMUFjJcVGCrnSBN3w9UFbIStQpPCexZ2mM6_MvabR-p1g6yBXRvmHjQdR80d7THO-cpSr-S5bdcSBqrtoj0B5ujxPdZrYHvUyg0mtAFC-f8JyfycZyvNeN8PTg2FQFm_VDdPVEatSURaLsljsmyYzsPqMZZhZr1hZQzLW66xt-9lOCAMIf__7yWR4vbYWJASnOzob4sv6x9eBE2wK_nW9TXqNoQt-s2zebSgDR21yHy0MgLZng9qZoybY1Nqb9UotBOP4HO6jhQHk21ORtzNHTbCpnf_K6_T133cAAAD__8pZ0IM=

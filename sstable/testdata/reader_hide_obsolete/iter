@@ -1,0 +1,344 @@
+build
+a#1,SET:A
+b#4,SINGLEDEL:
+b#2,SET:B
+c#5,DEL:
+c#3,SET:C
+d#4,SET:D4
+d#2,SET:D2
+----
+
+iter
+first
+next
+next
+next
+next
+next
+next
+next
+prev
+prev
+prev
+prev
+prev
+prev
+prev
+prev
+----
+first: <a:1>:A
+ next: <b:4>:
+ next: <b:2>:B
+ next: <c:5>:
+ next: <c:3>:C
+ next: <d:4>:D4
+ next: <d:2>:D2
+ next: .
+ prev: <d:2>:D2
+ prev: <d:4>:D4
+ prev: <c:3>:C
+ prev: <c:5>:
+ prev: <b:2>:B
+ prev: <b:4>:
+ prev: <a:1>:A
+ prev: .
+
+iter hide-obsolete-points=true
+first
+next
+next
+next
+next
+prev
+prev
+prev
+prev
+prev
+----
+first: <a:1>:A
+ next: <b:4>:
+ next: <c:5>:
+ next: <d:4>:D4
+ next: .
+ prev: <d:4>:D4
+ prev: <c:5>:
+ prev: <b:4>:
+ prev: <a:1>:A
+ prev: .
+
+iter hide-obsolete-points=true
+seek-ge c
+prev
+prev
+next
+next
+next
+seek-lt c
+next
+prev
+prev
+----
+seek-ge c: <c:5>:
+     prev: <b:4>:
+     prev: <a:1>:A
+     next: <b:4>:
+     next: <c:5>:
+     next: <d:4>:D4
+seek-lt c: <b:4>:
+     next: <c:5>:
+     prev: <b:4>:
+     prev: <a:1>:A
+
+build
+a#3,SET:A
+a#2,MERGE:A2
+b#20,MERGE:B20
+b#18,MERGE:B18
+b#16,SET:B16
+b#14,SET:B14
+c#30,MERGE:C30
+c#28,MERGE:C28
+c#26,DEL:
+----
+
+iter
+first
+next
+next
+next
+next
+next
+next
+next
+----
+first: <a:3>:A
+ next: <a:2>:A2
+ next: <b:20>:B20
+ next: <b:18>:B18
+ next: <b:16>:B16
+ next: <b:14>:B14
+ next: <c:30>:C30
+ next: <c:28>:C28
+
+iter hide-obsolete-points=true
+first
+next
+next
+next
+next
+next
+next
+last
+prev
+prev
+prev
+prev
+prev
+prev
+----
+first: <a:3>:A
+ next: <b:20>:B20
+ next: <b:18>:B18
+ next: <b:16>:B16
+ next: <c:30>:C30
+ next: <c:28>:C28
+ next: <c:26>:
+ last: <c:26>:
+ prev: <c:28>:C28
+ prev: <c:30>:C30
+ prev: <b:16>:B16
+ prev: <b:18>:B18
+ prev: <b:20>:B20
+ prev: <a:3>:A
+
+build
+b#20,MERGE:B20
+b#16,SETWITHDEL:B16
+b#14,SETWITHDEL:B14
+c#30,MERGE:C30
+c#28,DELSIZED:
+c#26,DEL:
+----
+
+iter
+first
+next
+next
+next
+next
+next
+next
+----
+first: <b:20>:B20
+ next: <b:16>:B16
+ next: <b:14>:B14
+ next: <c:30>:C30
+ next: <c:28>:
+ next: <c:26>:
+ next: .
+
+iter hide-obsolete-points=true
+first
+next
+next
+next
+next
+----
+first: <b:20>:B20
+ next: <b:16>:B16
+ next: <c:30>:C30
+ next: <c:28>:
+ next: .
+
+build
+b#20,SETWITHDEL:B20
+b#16,MERGE:B16
+b#14,MERGE:B14
+b#12,SET:B12
+----
+
+iter
+first
+next
+next
+next
+next
+----
+first: <b:20>:B20
+ next: <b:16>:B16
+ next: <b:14>:B14
+ next: <b:12>:B12
+ next: .
+
+iter hide-obsolete-points=true
+first
+next
+----
+first: <b:20>:B20
+ next: .
+
+build writing-to-lowest-level
+a#10,SET:A10
+b#20,DEL:
+b#16,MERGE:B16
+b#14,MERGE:B14
+b#12,SET:B12
+----
+
+iter
+first
+next
+next
+next
+next
+next
+----
+first: <a:10>:A10
+ next: <b:20>:
+ next: <b:16>:B16
+ next: <b:14>:B14
+ next: <b:12>:B12
+ next: .
+
+iter hide-obsolete-points=true
+first
+next
+----
+first: <a:10>:A10
+ next: .
+
+build writing-to-lowest-level
+a#10,SET:A10
+b#16,DEL:B16
+b#14,SETWITHDEL:B14
+c#30,DELSIZED:
+c#28,SET:C28
+d#40,SINGLEDEL:
+d#30,MERGE:D30
+----
+
+iter
+first
+next
+next
+next
+next
+next
+next
+next
+----
+first: <a:10>:A10
+ next: <b:16>:B16
+ next: <b:14>:B14
+ next: <c:30>:
+ next: <c:28>:C28
+ next: <d:40>:
+ next: <d:30>:D30
+ next: .
+
+iter hide-obsolete-points=true
+first
+next
+----
+first: <a:10>:A10
+ next: .
+
+build writing-to-lowest-level
+force-obsolete: a#1,SET:A
+force-obsolete: b#4,SINGLEDEL:
+force-obsolete: b#2,SET:B
+c#5,DEL:
+force-obsolete: d#10,SET:D10
+----
+
+iter
+first
+next
+next
+next
+next
+next
+----
+first: <a:1>:A
+ next: <b:4>:
+ next: <b:2>:B
+ next: <c:5>:
+ next: <d:10>:D10
+ next: .
+
+iter hide-obsolete-points=true
+first
+----
+table does not intersect BlockPropertyFilter
+
+build is-strict-obsolete
+d#40,SINGLEDEL:
+d#30,MERGE:D30
+----
+failed to write d#30,MERGE = D30: MERGE not supported in a strict-obsolete sstable
+
+# Regression test for #3761. If an entire block contains obsolete points,
+# skipBackward should still skip to blocks earlier in the sstable.
+
+build writing-to-lowest-level
+a#10,SET:A10
+force-obsolete: b#5,DEL:
+force-obsolete: b#2,SETWITHDEL:foo
+force-obsolete: c#0,DEL:
+force-obsolete: cc#5,DEL:
+----
+
+iter hide-obsolete-points-without-filter=true
+last
+----
+last: <a:10>:A10
+
+iter hide-obsolete-points-without-filter=true
+seek-lt d
+----
+seek-lt d: <a:10>:A10
+
+iter hide-obsolete-points-without-filter=true
+seek-lt c
+----
+seek-lt c: <a:10>:A10

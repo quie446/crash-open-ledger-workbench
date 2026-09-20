@@ -1,0 +1,180 @@
+# Default comparator specific tests.
+
+ingest cmp=default
+a#0,SET-b#0,SET
+----
+0: a#0,SET-b#0,SET
+
+ingest cmp=default
+a#0,SET-b#0,SET
+c#0,SET-d#0,SET
+e#0,SET-f#0,SET
+----
+0: a#0,SET-b#0,SET
+1: c#0,SET-d#0,SET
+2: e#0,SET-f#0,SET
+
+ingest cmp=default
+c#0,SET-d#0,SET
+a#0,SET-b#0,SET
+e#0,SET-f#0,SET
+----
+1: a#0,SET-b#0,SET
+0: c#0,SET-d#0,SET
+2: e#0,SET-f#0,SET
+
+ingest cmp=default
+a#0,SET-b#0,SET
+b#0,SET-d#0,SET
+e#0,SET-f#0,SET
+----
+pebble: local ingestion sstables have overlapping ranges
+
+ingest cmp=default
+c#0,SET-d#0,SET
+d#0,SET-e#0,SET
+a#0,SET-b#0,SET
+----
+pebble: local ingestion sstables have overlapping ranges
+
+ingest cmp=default
+a#1,SET-b#1,SET
+b#0,SET-c#0,SET
+----
+pebble: local ingestion sstables have overlapping ranges
+
+ingest cmp=default
+a#0,RANGEDEL-b#inf,RANGEDEL
+b#0,RANGEDEL-d#inf,RANGEDEL
+e#0,RANGEDEL-f#inf,RANGEDEL
+----
+0: a#0,RANGEDEL-b#inf,RANGEDEL
+1: b#0,RANGEDEL-d#inf,RANGEDEL
+2: e#0,RANGEDEL-f#inf,RANGEDEL
+
+ingest cmp=default
+a#0,RANGEDEL-b#inf,RANGEDEL
+c#0,RANGEDEL-e#inf,RANGEDEL
+e#0,RANGEDEL-f#inf,RANGEDEL
+----
+0: a#0,RANGEDEL-b#inf,RANGEDEL
+1: c#0,RANGEDEL-e#inf,RANGEDEL
+2: e#0,RANGEDEL-f#inf,RANGEDEL
+
+ingest cmp=default
+a#0,RANGEDEL-b#inf,RANGEDEL
+b#0,RANGEDEL-e#inf,RANGEDEL
+e#0,RANGEDEL-f#inf,RANGEDEL
+----
+0: a#0,RANGEDEL-b#inf,RANGEDEL
+1: b#0,RANGEDEL-e#inf,RANGEDEL
+2: e#0,RANGEDEL-f#inf,RANGEDEL
+
+ingest cmp=default
+a#0,RANGEDEL-c#inf,RANGEDEL
+b#0,SET-d#0,SET
+----
+pebble: local ingestion sstables have overlapping ranges
+
+ingest cmp=default
+b#0,RANGEDEL-d#inf,RANGEDEL
+a#0,SET-c#0,SET
+----
+pebble: local ingestion sstables have overlapping ranges
+
+ingest cmp=default
+a#0,RANGEDEL-b#inf,RANGEDEL
+b#0,SET-c#0,SET
+----
+0: a#0,RANGEDEL-b#inf,RANGEDEL
+1: b#0,SET-c#0,SET
+
+# Reverse comparator specific tests.
+
+ingest cmp=reverse
+b#0,SET-a#0,SET
+----
+0: b#0,SET-a#0,SET
+
+ingest cmp=reverse
+f#0,SET-e#0,SET
+d#0,SET-c#0,SET
+b#0,SET-a#0,SET
+----
+0: f#0,SET-e#0,SET
+1: d#0,SET-c#0,SET
+2: b#0,SET-a#0,SET
+
+ingest cmp=reverse
+f#0,SET-e#0,SET
+b#0,SET-a#0,SET
+d#0,SET-c#0,SET
+----
+0: f#0,SET-e#0,SET
+2: d#0,SET-c#0,SET
+1: b#0,SET-a#0,SET
+
+ingest cmp=reverse
+f#0,SET-e#0,SET
+d#0,SET-b#0,SET
+b#0,SET-a#0,SET
+----
+pebble: local ingestion sstables have overlapping ranges
+
+ingest cmp=reverse
+b#0,SET-a#0,SET
+e#0,SET-d#0,SET
+d#0,SET-c#0,SET
+----
+pebble: local ingestion sstables have overlapping ranges
+
+ingest cmp=reverse
+c#0,SET-b#0,SET
+b#1,SET-a#1,SET
+----
+pebble: local ingestion sstables have overlapping ranges
+
+ingest cmp=reverse
+b#0,RANGEDEL-a#inf,RANGEDEL
+d#0,RANGEDEL-b#inf,RANGEDEL
+f#0,RANGEDEL-e#inf,RANGEDEL
+----
+2: f#0,RANGEDEL-e#inf,RANGEDEL
+1: d#0,RANGEDEL-b#inf,RANGEDEL
+0: b#0,RANGEDEL-a#inf,RANGEDEL
+
+ingest cmp=reverse
+b#0,RANGEDEL-a#inf,RANGEDEL
+e#0,RANGEDEL-c#inf,RANGEDEL
+f#0,RANGEDEL-e#inf,RANGEDEL
+----
+2: f#0,RANGEDEL-e#inf,RANGEDEL
+1: e#0,RANGEDEL-c#inf,RANGEDEL
+0: b#0,RANGEDEL-a#inf,RANGEDEL
+
+ingest cmp=reverse
+b#0,RANGEDEL-a#inf,RANGEDEL
+e#0,RANGEDEL-b#inf,RANGEDEL
+f#0,RANGEDEL-e#inf,RANGEDEL
+----
+2: f#0,RANGEDEL-e#inf,RANGEDEL
+1: e#0,RANGEDEL-b#inf,RANGEDEL
+0: b#0,RANGEDEL-a#inf,RANGEDEL
+
+ingest cmp=reverse
+c#0,RANGEDEL-a#inf,RANGEDEL
+d#0,SET-b#0,SET
+----
+pebble: local ingestion sstables have overlapping ranges
+
+ingest cmp=reverse
+d#0,RANGEDEL-b#inf,RANGEDEL
+c#0,SET-a#0,SET
+----
+pebble: local ingestion sstables have overlapping ranges
+
+ingest cmp=reverse
+b#0,RANGEDEL-a#inf,RANGEDEL
+c#0,SET-b#0,SET
+----
+pebble: local ingestion sstables have overlapping ranges

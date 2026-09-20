@@ -1,0 +1,298 @@
+# Test archive cleaner.
+open db archive
+----
+mkdir-all: db 0755
+open-dir: .
+sync: .
+close: .
+open-dir: db
+close: db
+mkdir-all: db_wal 0755
+open-dir: .
+sync: .
+close: .
+open-dir: db_wal
+close: db_wal
+open-dir: db
+lock: db/LOCK
+lock: db_wal/LOCK
+open-dir: db
+open-dir: db
+open-dir: db
+create: db/MANIFEST-000001
+sync: db/MANIFEST-000001
+sync: db
+create: db/marker.manifest.000001.MANIFEST-000001
+sync: db/marker.manifest.000001.MANIFEST-000001
+close: db/marker.manifest.000001.MANIFEST-000001
+sync: db
+open-dir: db_wal
+create: db/temporary.000002.dbtmp
+sync: db/temporary.000002.dbtmp
+close: db/temporary.000002.dbtmp
+rename: db/temporary.000002.dbtmp -> db/OPTIONS-000002
+sync: db
+create: db_wal/000003.log
+sync: db_wal
+create: db/marker.format-version.000001.013
+sync: db/marker.format-version.000001.013
+close: db/marker.format-version.000001.013
+sync: db
+get-disk-usage: db
+
+batch db
+set a 1
+set b 2
+set c 3
+----
+sync-data: db_wal/000003.log
+
+flush db
+----
+sync-data: db_wal/000003.log
+close: db_wal/000003.log
+create: db_wal/000004.log
+sync: db_wal
+create: db/000005.sst
+sync-data: db/000005.sst
+close: db/000005.sst
+sync: db
+get-disk-usage: db
+sync: db/MANIFEST-000001
+mkdir-all: db_wal/archive 0755
+rename: db_wal/000003.log -> db_wal/archive/000003.log
+
+batch db
+set d 4
+----
+sync-data: db_wal/000004.log
+
+compact db
+----
+sync-data: db_wal/000004.log
+close: db_wal/000004.log
+create: db_wal/000006.log
+sync: db_wal
+create: db/000007.sst
+sync-data: db/000007.sst
+close: db/000007.sst
+sync: db
+get-disk-usage: db
+sync: db/MANIFEST-000001
+mkdir-all: db_wal/archive 0755
+rename: db_wal/000004.log -> db_wal/archive/000004.log
+open: db/000005.sst (options: *vfs.randomReadsOption)
+read-at(421, 61): db/000005.sst
+read-at(392, 37): db/000005.sst
+read-at(79, 313): db/000005.sst
+open: db/000007.sst (options: *vfs.randomReadsOption)
+read-at(395, 61): db/000007.sst
+read-at(366, 37): db/000007.sst
+read-at(53, 313): db/000007.sst
+open: db/000005.sst (options: *vfs.sequentialReadsOption)
+read-at(52, 27): db/000005.sst
+read-at(0, 52): db/000005.sst
+create: db/000008.sst
+close: db/000005.sst
+open: db/000007.sst (options: *vfs.sequentialReadsOption)
+read-at(26, 27): db/000007.sst
+read-at(0, 26): db/000007.sst
+close: db/000007.sst
+sync-data: db/000008.sst
+close: db/000008.sst
+sync: db
+get-disk-usage: db
+sync: db/MANIFEST-000001
+close: db/000005.sst
+close: db/000007.sst
+mkdir-all: db/archive 0755
+rename: db/000005.sst -> db/archive/000005.sst
+mkdir-all: db/archive 0755
+rename: db/000007.sst -> db/archive/000007.sst
+
+list db
+----
+000008.sst
+LOCK
+MANIFEST-000001
+OPTIONS-000002
+archive
+marker.format-version.000001.013
+marker.manifest.000001.MANIFEST-000001
+
+list db_wal
+----
+000006.log
+LOCK
+archive
+
+list db/archive
+----
+000005.sst
+000007.sst
+
+list db_wal/archive
+----
+000003.log
+000004.log
+
+# Test cleanup of extra sstables on open.
+open db1
+----
+mkdir-all: db1 0755
+open-dir: .
+sync: .
+close: .
+open-dir: db1
+close: db1
+mkdir-all: db1_wal 0755
+open-dir: .
+sync: .
+close: .
+open-dir: db1_wal
+close: db1_wal
+open-dir: db1
+lock: db1/LOCK
+lock: db1_wal/LOCK
+open-dir: db1
+open-dir: db1
+open-dir: db1
+create: db1/MANIFEST-000001
+sync: db1/MANIFEST-000001
+sync: db1
+create: db1/marker.manifest.000001.MANIFEST-000001
+sync: db1/marker.manifest.000001.MANIFEST-000001
+close: db1/marker.manifest.000001.MANIFEST-000001
+sync: db1
+open-dir: db1_wal
+create: db1/temporary.000002.dbtmp
+sync: db1/temporary.000002.dbtmp
+close: db1/temporary.000002.dbtmp
+rename: db1/temporary.000002.dbtmp -> db1/OPTIONS-000002
+sync: db1
+create: db1_wal/000003.log
+sync: db1_wal
+create: db1/marker.format-version.000001.013
+sync: db1/marker.format-version.000001.013
+close: db1/marker.format-version.000001.013
+sync: db1
+get-disk-usage: db1
+
+batch db1
+set a 1
+set b 2
+set c 3
+----
+sync-data: db1_wal/000003.log
+
+flush db1
+----
+sync-data: db1_wal/000003.log
+close: db1_wal/000003.log
+create: db1_wal/000004.log
+sync: db1_wal
+create: db1/000005.sst
+sync-data: db1/000005.sst
+close: db1/000005.sst
+sync: db1
+get-disk-usage: db1
+sync: db1/MANIFEST-000001
+
+close db1
+----
+close: db1
+sync-data: db1_wal/000004.log
+close: db1_wal/000004.log
+close: db1_wal
+close: db1/MANIFEST-000001
+close: db1
+close: db1
+close: db1
+
+create-bogus-file db1/000123.sst
+----
+create: db1/000123.sst
+sync: db1/000123.sst
+close: db1/000123.sst
+
+create-bogus-file db1/000456.sst
+----
+create: db1/000456.sst
+sync: db1/000456.sst
+close: db1/000456.sst
+
+create-bogus-file db1/000234.blob
+----
+create: db1/000234.blob
+sync: db1/000234.blob
+close: db1/000234.blob
+
+create-bogus-file db1/000345.blob
+----
+create: db1/000345.blob
+sync: db1/000345.blob
+close: db1/000345.blob
+
+
+open db1
+----
+mkdir-all: db1 0755
+open-dir: .
+sync: .
+close: .
+open-dir: db1
+close: db1
+mkdir-all: db1_wal 0755
+open-dir: .
+sync: .
+close: .
+open-dir: db1_wal
+close: db1_wal
+open-dir: db1
+lock: db1/LOCK
+lock: db1_wal/LOCK
+open-dir: db1
+open-dir: db1
+open-dir: db1
+open: db1/MANIFEST-000001
+close: db1/MANIFEST-000001
+open: db1/OPTIONS-000002
+close: db1/OPTIONS-000002
+remove: db1_wal/000003.log
+open-dir: db1_wal
+open: db1_wal/000004.log (options: *vfs.sequentialReadsOption)
+close: db1_wal/000004.log
+create: db1/temporary.000458.dbtmp
+sync: db1/temporary.000458.dbtmp
+close: db1/temporary.000458.dbtmp
+rename: db1/temporary.000458.dbtmp -> db1/OPTIONS-000458
+sync: db1
+remove: db1/OPTIONS-000002
+remove: db1/000123.sst
+remove: db1/000456.sst
+remove: db1/000234.blob
+remove: db1/000345.blob
+sync: db1
+get-disk-usage: db1
+create: db1/MANIFEST-000459
+sync: db1
+sync: db1/MANIFEST-000459
+create: db1/marker.manifest.000002.MANIFEST-000459
+sync: db1/marker.manifest.000002.MANIFEST-000459
+close: db1/marker.manifest.000002.MANIFEST-000459
+remove: db1/marker.manifest.000001.MANIFEST-000001
+sync: db1
+remove: db1_wal/000004.log
+create: db1_wal/000460.log
+sync: db1_wal
+get-disk-usage: db1
+
+list db1
+----
+000005.sst
+LOCK
+MANIFEST-000001
+MANIFEST-000459
+OPTIONS-000458
+marker.format-version.000001.013
+marker.manifest.000002.MANIFEST-000459

@@ -1,0 +1,59 @@
+# Two keys in each data block.
+build block-size=30 index-block-size=30 cache-size=10000
+a#1,SET:A
+b#2,SET:B
+c#3,SET:C
+d#4,SET:D
+----
+
+# The first iteration has cache misses for both blocks. The second iteration
+# hits the cache. Then reset stats.
+iter
+first
+stats
+next
+stats
+next
+stats
+next
+stats
+next
+stats
+first
+stats
+next
+stats
+next
+stats
+next
+stats
+next
+stats
+reset-stats
+stats
+first
+stats
+----
+      first: <a:1>
+blocks: 0B cached, 74B not cached (read time: 0s); points: 0 (0B keys, 0B values)
+       next: <b:2>
+blocks: 0B cached, 74B not cached (read time: 0s); points: 0 (0B keys, 0B values)
+       next: <c:3>
+blocks: 0B cached, 108B not cached (read time: 0s); points: 0 (0B keys, 0B values)
+       next: <d:4>
+blocks: 0B cached, 108B not cached (read time: 0s); points: 0 (0B keys, 0B values)
+       next: .
+blocks: 0B cached, 108B not cached (read time: 0s); points: 0 (0B keys, 0B values)
+      first: <a:1>
+blocks: 34B cached, 108B not cached (read time: 0s); points: 0 (0B keys, 0B values)
+       next: <b:2>
+blocks: 34B cached, 108B not cached (read time: 0s); points: 0 (0B keys, 0B values)
+       next: <c:3>
+blocks: 68B cached, 108B not cached (read time: 0s); points: 0 (0B keys, 0B values)
+       next: <d:4>
+blocks: 68B cached, 108B not cached (read time: 0s); points: 0 (0B keys, 0B values)
+       next: .
+blocks: 68B cached, 108B not cached (read time: 0s); points: 0 (0B keys, 0B values)
+blocks: 0B cached; points: 0 (0B keys, 0B values)
+      first: <a:1>
+blocks: 34B cached; points: 0 (0B keys, 0B values)

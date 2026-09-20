@@ -1,0 +1,170 @@
+# Generate sstables with sequential, non-overlapping keys. When we trigger a compaction
+# from L0 to Lbase, we expect all the compactions to be moves, since there are no
+# overlapping keys being written.
+define l0-compaction-threshold=1 auto-compactions=off target-file-sizes=65536
+----
+
+
+set-concurrent-compactions range=(3,3)
+----
+concurrency set to [3, 3]
+
+
+populate keylen=3 timestamps=(1) vallen=1
+----
+wrote 18278 keys
+
+
+flush
+----
+L0.0:
+  000006:[a@1#10,SET-hci@1#4995,SET]
+  000007:[hcj@1#4996,SET-oex@1#9985,SET]
+  000008:[oey@1#9986,SET-vhm@1#14976,SET]
+  000009:[vhn@1#14977,SET-zzz@1#18287,SET]
+
+
+auto-compact
+----
+L6:
+  000006:[a@1#10,SET-hci@1#4995,SET]
+  000007:[hcj@1#4996,SET-oex@1#9985,SET]
+  000008:[oey@1#9986,SET-vhm@1#14976,SET]
+  000009:[vhn@1#14977,SET-zzz@1#18287,SET]
+
+metrics
+----
+----
+LSM                             |    vtables   |   value sep   |        |   ingested   |    amp
+level       size | tables  size |  count  size |  refsz valblk |     in | tables  size |   r     w
+-----------------+--------------+--------------+---------------+--------+--------------+----------
+   L0         0B |      0    0B |      0     0 |     0B     0B |  160KB |      0    0B |   0  1.47
+   L6      236KB |      4 236KB |      0     0 |     0B     0B |     0B |      0    0B |   1     0
+-----------------+--------------+--------------+---------------+--------+--------------+----------
+total      236KB |      4 236KB |      0     0 |     0B     0B |  160KB |      0    0B |   1  2.47
+
+COMPACTIONS               |     moved    |     multilevel    |     read     |       written
+level | score    ff   cff | tables  size |   top    in  read | tables  blob | tables  sstsz blobsz
+------+-------------------+--------------+-------------------+--------------+---------------------
+   L0 |     -     0     0 |      0    0B |    0B    0B    0B |     0B    0B |      4  236KB     0B
+   L6 |     -  0.00  0.00 |      4 236KB |    0B    0B    0B |     0B    0B |      0     0B     0B
+------+-------------------+--------------+-------------------+--------------+---------------------
+total |     -     -     - |      4 236KB |    0B    0B    0B |     0B    0B |      4  396KB     0B
+
+ kind | default  delete  elision  move  read  tomb  rewrite  copy  multi  blob virtual
+count |       0       0        0     4     0     0        0     0      0     0       0
+
+COMMIT PIPELINE
+               wals                |              memtables              |       ingestions
+    files |      written |  overhead |   flushes |       live |     zombie |     total |   flushable
+----------+--------------+-----------+-----------+------------+------------+-----------+------------
+   1 (0B) | 160KB: 160KB |      0.0% |         1 |  1 (512KB) |  1 (512KB) |         0 |      0 (0B)
+
+BLOCK CACHE: 0 entries (0B)
+                 miss rate [percentage of total misses] since start
+level      all     |  background    sstdata       sstval      blobval       filter       index
+-------------------+------------------------------------------------------------------------------
+ n/a   100% [100%] |                                                                  100% [100%]
+-------------------+------------------------------------------------------------------------------
+total     100%     |                                                                  100% [100%]
+
+ITERATORS
+        file cache        |    filter   |    open     |    open
+     entries |   hit rate | utilization |  sst iters  |  snapshots
+-------------+------------+-------------+-------------+------------
+   4 (1.2KB) |      93.3% |        0.0% |           0 |           0
+
+FILES                 physical tables                 |                blob files
+          |     local        shared        remote     |     local        shared        remote
+----------+-------------------------------------------+------------------------------------------
+     live |   4 (236KB)      0 (0B)        0 (0B)     |    0 (0B)        0 (0B)        0 (0B)
+   zombie |    0 (0B)        0 (0B)        0 (0B)     |    0 (0B)        0 (0B)        0 (0B)
+ obsolete |    0 (0B)        0 (0B)        0 (0B)     |    0 (0B)        0 (0B)        0 (0B)
+
+MISC            |
+----------------+-----------
+table stats     | all loaded
+table garbage   |
+  point del     | 0B
+  range del     | 0B
+blob values     |
+  total         | 0B
+  refed         | 0B
+  backing-refed | 0B
+
+CGO MEMORY    |          block cache           |                     memtables
+          tot |           tot |           data |            maps |            ents |           tot
+--------------+---------------+----------------+-----------------+-----------------+--------------
+           0B |            0B |             0B |              0B |              0B |            0B
+
+COMPACTIONS
+                                                                         |      blob rewrites
+    est. debt |   in progress |  cancelled |   failed |    problem spans |       read |    written
+--------------+---------------+------------+----------+------------------+------------+-----------
+           0B |        0 (0B) |     0 (0B) |        0 |                0 |         0B |         0B
+
+KEYS
+      range keys |       tombstones |      missized tombstones |      point dels |      range dels
+-----------------+------------------+--------------------------+-----------------+----------------
+               0 |                0 |                        0 |              0B |              0B
+
+COMPRESSION
+    algorithm |        tables |    blob files
+--------------+---------------+--------------
+         none |         234KB |
+
+        Logical bytes compressed / decompressed
+level |  data blocks   |  value blocks  |  other blocks
+------+----------------+----------------+---------------
+L0-L4 |   233KB / 0B   |    0B / 0B     |   569B / 0B
+
+DELETE PACER   |   in queue   |   deleted
+---------------+--------------+-------------
+        tables |    0 (0B)    |    0 (0B)
+    blob files |    0 (0B)    |    0 (0B)
+   other files |    0 (0B)    |    0 (0B)
+----
+----
+
+define target-file-sizes=(1, 1, 1, 1000) hide-size
+L0
+  ba#2,SET:v
+L0
+  bb#2,SET:v
+L0
+  ba#1,SET:v
+L0
+  bb#1,SET:v
+L4
+  a#3,SET:v
+L5
+  a#2,SET:v
+L6
+  a#1,SET:v
+----
+L0.1:
+  000004:[ba#2,SET-ba#2,SET]
+  000005:[bb#2,SET-bb#2,SET]
+L0.0:
+  000006:[ba#1,SET-ba#1,SET]
+  000007:[bb#1,SET-bb#1,SET]
+L4:
+  000008:[a#3,SET-a#3,SET]
+L5:
+  000009:[a#2,SET-a#2,SET]
+L6:
+  000010:[a#1,SET-a#1,SET]
+
+# The result of this compaction requires two files on all levels except L6. Even
+# though we are compacting into L1, we are using the L6 target file size,
+# knowing that the result will eventually be moved.
+compact b-c
+----
+L1:
+  000011:[ba#0,SET-bb#0,SET]
+L4:
+  000008:[a#3,SET-a#3,SET]
+L5:
+  000009:[a#2,SET-a#2,SET]
+L6:
+  000010:[a#1,SET-a#1,SET]

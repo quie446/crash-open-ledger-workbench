@@ -1,0 +1,170 @@
+build ext1
+set c c
+set e e
+----
+
+flushable ext1
+----
+
+iter
+----
+c#0,SET
+e#0,SET
+
+rangekeyIter
+----
+
+rangedelIter
+----
+
+containsRangeKey
+----
+false
+
+readyForFlush
+----
+true
+
+reset
+----
+
+build ext2
+range-key-set d g 1 val1
+----
+
+flushable ext2
+----
+
+iter
+----
+
+rangekeyIter
+----
+d-g:{(#1,RANGEKEYSET,1,val1)}
+
+containsRangeKey
+----
+true
+
+rangedelIter
+----
+
+reset
+----
+
+build ext3
+del-range a j
+del-range o z
+----
+
+flushable ext3
+----
+
+iter
+----
+
+rangedelIter
+----
+a-j:{(#2,RANGEDEL)}
+o-z:{(#2,RANGEDEL)}
+
+rangekeyIter
+----
+
+readyForFlush
+----
+true
+
+containsRangeKey
+----
+false
+
+reset
+----
+
+build ext4
+del-range a j
+set k kk
+range-key-set y z 1 val1
+----
+
+flushable ext4
+----
+
+iter
+----
+k#3,SET
+
+rangekeyIter
+----
+y-z:{(#3,RANGEKEYSET,1,val1)}
+
+rangedelIter
+----
+a-j:{(#3,RANGEDEL)}
+
+readyForFlush
+----
+true
+
+containsRangeKey
+----
+true
+
+build ext5
+set a aa
+set k kk
+range-key-set y z 1 val1
+----
+
+flushable ext5 excise=a-g
+----
+
+iter
+----
+a#5,SET
+k#5,SET
+
+rangekeyIter
+----
+a-g:{(#4,RANGEKEYDEL)}
+y-z:{(#5,RANGEKEYSET,1,val1)}
+
+rangedelIter
+----
+a-g:{(#4,RANGEDEL)}
+
+readyForFlush
+----
+true
+
+containsRangeKey
+----
+true
+
+build ext6
+range-key-set a c 1 val1
+----
+
+flushable ext6 excise=d-g
+----
+
+iter
+----
+
+rangekeyIter
+----
+a-c:{(#7,RANGEKEYSET,1,val1)}
+d-g:{(#6,RANGEKEYDEL)}
+
+rangedelIter
+----
+d-g:{(#6,RANGEDEL)}
+
+readyForFlush
+----
+true
+
+containsRangeKey
+----
+true

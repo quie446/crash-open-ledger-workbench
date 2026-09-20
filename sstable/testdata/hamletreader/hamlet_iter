@@ -1,0 +1,389 @@
+iter
+first
+next
+next
+next
+next
+----
+first: <a:0>
+ next: <aboard:0>
+ next: <about:0>
+ next: <above:0>
+ next: <abroad:0>
+
+iter
+seek-ge a
+next
+next
+next
+next
+----
+seek-ge a: <a:0>
+     next: <aboard:0>
+     next: <about:0>
+     next: <above:0>
+     next: <abroad:0>
+
+iter
+seek-ge b
+next
+next
+next
+----
+seek-ge b: <baby:0>
+     next: <back:0>
+     next: <baked:0>
+     next: <bark:0>
+
+iter
+seek-ge c
+next
+next
+----
+seek-ge c: <call:0>
+     next: <calumnious:0>
+     next: <came:0>
+
+iter
+seek-ge d
+next
+----
+seek-ge d: <d:0>
+     next: <daily:0>
+
+iter
+seek-ge e
+----
+seek-ge e: <e:0>
+
+iter
+seek-ge b
+seek-ge c
+seek-ge d
+seek-ge e
+----
+seek-ge b: <baby:0>
+seek-ge c: <call:0>
+seek-ge d: <d:0>
+seek-ge e: <e:0>
+
+iter
+last
+prev
+prev
+prev
+prev
+----
+last: <youth:0>
+prev: <yourself:0>
+prev: <your:0>
+prev: <young:0>
+prev: <you:0>
+
+iter
+seek-lt e
+prev
+prev
+prev
+prev
+----
+seek-lt e: <dye:0>
+     prev: <dwelling:0>
+     prev: <duty:0>
+     prev: <duties:0>
+     prev: <dust:0>
+
+iter
+seek-lt d
+prev
+prev
+prev
+----
+seek-lt d: <cut:0>
+     prev: <customary:0>
+     prev: <custom:0>
+     prev: <cursed:0>
+
+iter
+seek-lt c
+prev
+prev
+----
+seek-lt c: <by:0>
+     prev: <buy:0>
+     prev: <buttons:0>
+
+iter
+seek-lt b
+prev
+----
+seek-lt b: <ay:0>
+     prev: <awhile:0>
+
+iter
+seek-lt a
+----
+seek-lt a: .
+
+iter
+seek-lt d
+seek-lt c
+seek-lt b
+seek-lt a
+----
+seek-lt d: <cut:0>
+seek-lt c: <by:0>
+seek-lt b: <ay:0>
+seek-lt a: .
+
+iter globalSeqNum=1
+first
+next
+next
+next
+next
+----
+first: <a:1>
+ next: <aboard:1>
+ next: <about:1>
+ next: <above:1>
+ next: <abroad:1>
+
+iter globalSeqNum=10
+first
+next
+next
+next
+next
+----
+first: <a:10>
+ next: <aboard:10>
+ next: <about:10>
+ next: <above:10>
+ next: <abroad:10>
+
+iter globalSeqNum=0
+seek-lt x
+----
+seek-lt x: <wrung:0>
+
+get
+b
+a
+f
+d
+c
+----
+<err: pebble: not found>
+97
+<err: pebble: not found>
+54
+<err: pebble: not found>
+
+iter
+seek-ge aboard
+prev
+prev
+----
+seek-ge aboard: <aboard:0>
+          prev: <a:0>
+          prev: .
+
+iter
+seek-ge calumnious
+next
+next
+next
+prev
+prev
+prev
+prev
+prev
+----
+seek-ge calumnious: <calumnious:0>
+              next: <came:0>
+              next: <can:0>
+              next: <canker:0>
+              prev: <can:0>
+              prev: <came:0>
+              prev: <calumnious:0>
+              prev: <call:0>
+              prev: <by:0>
+
+iter
+seek-lt yourself
+next
+next
+next
+----
+seek-lt yourself: <your:0>
+            next: <yourself:0>
+            next: <youth:0>
+            next: .
+
+iter
+seek-lt yourself
+prev
+prev
+prev
+next
+next
+seek-ge calumnious
+prev
+prev
+prev
+first
+next
+next
+prev
+prev
+prev
+----
+  seek-lt yourself: <your:0>
+              prev: <young:0>
+              prev: <you:0>
+              prev: <yond:0>
+              next: <you:0>
+              next: <young:0>
+seek-ge calumnious: <calumnious:0>
+              prev: <call:0>
+              prev: <by:0>
+              prev: <buy:0>
+             first: <a:0>
+              next: <aboard:0>
+              next: <about:0>
+              prev: <aboard:0>
+              prev: <a:0>
+              prev: .
+
+iter
+seek-ge m
+next
+next
+next
+----
+seek-ge m: <m:0>
+     next: <madam:0>
+     next: <made:0>
+     next: <madness:0>
+
+iter
+seek-lt m
+next
+next
+next
+----
+seek-lt m: <luxury:0>
+     next: <m:0>
+     next: <madam:0>
+     next: <made:0>
+
+iter
+seek-ge a
+seek-ge b
+seek-ge c
+seek-ge d
+seek-ge e
+seek-ge f
+seek-ge g
+seek-ge h
+seek-ge i
+seek-ge j
+seek-ge k
+seek-ge l
+seek-ge m
+seek-ge n
+seek-ge o
+seek-ge p
+seek-ge q
+seek-ge r
+seek-ge s
+seek-ge t
+seek-ge u
+seek-ge v
+seek-ge w
+seek-ge x
+seek-ge y
+seek-ge z
+----
+seek-ge a: <a:0>
+seek-ge b: <baby:0>
+seek-ge c: <call:0>
+seek-ge d: <d:0>
+seek-ge e: <e:0>
+seek-ge f: <face:0>
+seek-ge g: <gaged:0>
+seek-ge h: <ha:0>
+seek-ge i: <i:0>
+seek-ge j: <jaws:0>
+seek-ge k: <keep:0>
+seek-ge l: <labourer:0>
+seek-ge m: <m:0>
+seek-ge n: <name:0>
+seek-ge o: <o:0>
+seek-ge p: <pale:0>
+seek-ge q: <quarrel:0>
+seek-ge r: <radiant:0>
+seek-ge s: <s:0>
+seek-ge t: <t:0>
+seek-ge u: <ubique:0>
+seek-ge v: <v:0>
+seek-ge w: <wake:0>
+seek-ge x: <yea:0>
+seek-ge y: <yea:0>
+seek-ge z: .
+
+iter
+seek-lt a
+seek-lt b
+seek-lt c
+seek-lt d
+seek-lt e
+seek-lt f
+seek-lt g
+seek-lt h
+seek-lt i
+seek-lt j
+seek-lt k
+seek-lt l
+seek-lt m
+seek-lt n
+seek-lt o
+seek-lt p
+seek-lt q
+seek-lt r
+seek-lt s
+seek-lt t
+seek-lt u
+seek-lt v
+seek-lt w
+seek-lt x
+seek-lt y
+seek-lt z
+----
+seek-lt a: .
+seek-lt b: <ay:0>
+seek-lt c: <by:0>
+seek-lt d: <cut:0>
+seek-lt e: <dye:0>
+seek-lt f: <eyes:0>
+seek-lt g: <further:0>
+seek-lt h: <guilty:0>
+seek-lt i: <hyperion:0>
+seek-lt j: <iv:0>
+seek-lt k: <jump:0>
+seek-lt l: <knows:0>
+seek-lt m: <luxury:0>
+seek-lt n: <myself:0>
+seek-lt o: <now:0>
+seek-lt p: <ownself:0>
+seek-lt q: <puts:0>
+seek-lt r: <quills:0>
+seek-lt s: <russet:0>
+seek-lt t: <sworn:0>
+seek-lt u: <two:0>
+seek-lt v: <usurp:0>
+seek-lt w: <vulgar:0>
+seek-lt x: <wrung:0>
+seek-lt y: <wrung:0>
+seek-lt z: <youth:0>

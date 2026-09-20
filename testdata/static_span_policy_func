@@ -1,0 +1,71 @@
+# A single policy.
+
+test d-f:lowlatency
+[a, z)
+[a, b)
+[b, z)
+[c, z)
+[d, z)
+[e, z)
+[g, z)
+----
+[-∞, d) -> default
+[-∞, d) -> default
+[-∞, d) -> default
+[-∞, d) -> default
+[d, f) -> disable-value-separation-by-suffix,no-blob-value-separation
+[d, f) -> disable-value-separation-by-suffix,no-blob-value-separation
+[f, ∞) -> default
+
+# A single encompassing policy.
+
+test a-z:lowlatency
+[a, x)
+[b, c]
+[u, zz)
+[z, zz)
+----
+[a, z) -> disable-value-separation-by-suffix,no-blob-value-separation
+[a, z) -> disable-value-separation-by-suffix,no-blob-value-separation
+[a, z) -> disable-value-separation-by-suffix,no-blob-value-separation
+[z, ∞) -> default
+
+# Abutting policies.
+
+test b-d:lowlatency d-f:latencytolerant f-h:lowlatency
+[a, z)
+[b, z)
+[b, c]
+[c, d)
+[d, e)
+[f, u)
+[h, z)
+----
+[-∞, b) -> default
+[b, d) -> disable-value-separation-by-suffix,no-blob-value-separation
+[b, d) -> disable-value-separation-by-suffix,no-blob-value-separation
+[b, d) -> disable-value-separation-by-suffix,no-blob-value-separation
+[d, f) -> override-value-separation-min-size=10
+[f, h) -> disable-value-separation-by-suffix,no-blob-value-separation
+[h, ∞) -> default
+
+# Gaps between policies.
+
+test b-d:lowlatency h-j:latencytolerant
+[a, z)
+[b, c]
+[d, e)
+[e, h)
+[e, h]
+[i, i]
+[h, z)
+[j, k)
+----
+[-∞, b) -> default
+[b, d) -> disable-value-separation-by-suffix,no-blob-value-separation
+[d, h) -> default
+[d, h) -> default
+[d, h) -> default
+[h, j) -> override-value-separation-min-size=10
+[h, j) -> override-value-separation-min-size=10
+[j, ∞) -> default

@@ -1,0 +1,54 @@
+build-remote file-not-there
+d#0,SET:dvalue
+q#0,SET:qvalue
+w#0,SET:wvalue
+----
+
+ingest-external
+file bounds=(d,w0)
+----
+
+# Verify that a problem span is set.
+wait-for-problem-span workload=(d,w)
+----
+
+# Verify that compactions still go through.
+wait-for-compactions workload=(a,z)
+----
+
+# Make file appear.
+move-remote-object file-not-there file
+----
+file-not-there -> file
+
+# Expire spans.
+expire-spans
+----
+
+# Compactions should now go through and eventually there should be no external
+# files.
+wait-for-no-external-files workload=(d,w)
+----
+
+build-remote file2-not-there
+a#0,SET:avalue
+u#0,SET:uvalue
+z#0,SET:zvalue
+----
+
+ingest-external
+file2 bounds=(a,z0)
+----
+
+# Verify that a problem span is set.
+wait-for-problem-span workload=(a,z)
+----
+
+# Make file2 appear.
+move-remote-object file2-not-there file2
+----
+file2-not-there -> file2
+
+# Verify that a manual compaction goes through despite the problem span.
+manual-compaction
+----

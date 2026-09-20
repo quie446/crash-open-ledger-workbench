@@ -1,0 +1,22 @@
+build
+a#1,SET:A
+aa#2,SET:AA
+aaa#3,SET:AAA
+aaaa#4,SET:AAAA
+b#5,SET:B
+----
+
+get
+b
+ab
+a
+aaa
+aa
+aaaa
+----
+B
+<err: pebble: not found>
+A
+AAA
+AA
+AAAA

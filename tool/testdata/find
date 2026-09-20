@@ -1,0 +1,198 @@
+find
+----
+accepts 2 arg(s), received 0
+
+find
+non-existent
+key
+----
+stat non-existent: file does not exist
+
+find
+testdata/find-db
+aaa
+----
+000002.log
+    aaa#10,SET [31]
+000004.log
+    aaa#17,DEL []
+000005.sst [aaa#10,SET-ccc#14,MERGE]
+    (flushed to L0, moved to L6)
+    aaa#10,SET [31]
+000008.sst [aaa#0,SET-ccc#0,MERGE]
+    (compacted L0 [...] + L6 [000005])
+    aaa#0,SET [31]
+000010.sst [aaa#17,DEL-eee#inf,RANGEDEL]
+    (flushed to L0)
+    aaa#17,DEL []
+000011.sst [aaa#17,DEL-eee#inf,RANGEDEL]
+    (compacted L0 [000010] + L6 [000008 ...])
+    aaa#17,DEL []
+    aaa#0,SET [31]
+
+find
+testdata/find-db
+bbb
+--key=%x
+--value=pretty:test-comparer
+----
+000002.log
+    626262#11,SET test value formatter: 2
+000004.log
+    626262-656565#19,RANGEDEL
+000005.sst [616161#10,SET-636363#14,MERGE]
+    (flushed to L0, moved to L6)
+    626262#11,SET test value formatter: 2
+000006.sst [626262#15,SET-636363#15,SET]
+    (ingested to L0)
+    626262#15,SET test value formatter: 22
+000008.sst [616161#0,SET-636363#0,MERGE]
+    (compacted L0 [000006] + L6 [000005])
+    626262#15,SET test value formatter: 22
+    626262#0,SET test value formatter: 2
+000010.sst [616161#17,DEL-656565#inf,RANGEDEL]
+    (flushed to L0)
+    626262-656565#19,RANGEDEL
+000011.sst [616161#17,DEL-656565#inf,RANGEDEL]
+    (compacted L0 [000010] + L6 [000008 ...])
+    626262-656565#19,RANGEDEL
+    626262#15,SET test value formatter: 22
+    626262#0,SET test value formatter: 2
+
+find
+testdata/find-db
+hex:636363
+--value=null
+----
+000002.log
+    ccc#12,MERGE
+    ccc#13,MERGE
+    ccc#14,MERGE
+000004.log
+    ccc#18,SINGLEDEL
+    bbb-eee#19,RANGEDEL
+000005.sst [aaa#10,SET-ccc#14,MERGE]
+    (flushed to L0, moved to L6)
+    ccc#14,MERGE
+000006.sst [bbb#15,SET-ccc#15,SET]
+    (ingested to L0)
+    ccc#15,SET
+000008.sst [aaa#0,SET-ccc#0,MERGE]
+    (compacted L0 [000006] + L6 [000005])
+    ccc#15,SET
+    ccc#0,MERGE
+000010.sst [aaa#17,DEL-eee#inf,RANGEDEL]
+    (flushed to L0)
+    bbb-eee#19,RANGEDEL
+000011.sst [aaa#17,DEL-eee#inf,RANGEDEL]
+    (compacted L0 [000010] + L6 [000008 ...])
+    bbb-eee#19,RANGEDEL
+    ccc#15,SET
+    ccc#0,MERGE
+
+find
+testdata/find-db
+ddd
+-v
+----
+find-db
+    1 manifest
+    3 logs
+    6 sstables
+find-db/MANIFEST-000001
+    9 edits
+000002: {(find-db/archive,000)}
+000004: {(find-db/archive,000)}
+000009: {(find-db,000)}
+find-db/archive/000005.sst
+find-db/archive/000006.sst: global seqnum: 15
+find-db/archive/000007.sst: global seqnum: 16
+find-db/archive/000008.sst
+find-db/archive/000010.sst
+find-db/000011.sst
+000004.log
+    bbb-eee#19,RANGEDEL
+000007.sst [ddd#16,SET-ddd#16,SET]
+    (ingested to L6)
+    ddd#16,SET [3333]
+000010.sst [aaa#17,DEL-eee#inf,RANGEDEL]
+    (flushed to L0)
+    bbb-eee#19,RANGEDEL
+000011.sst [aaa#17,DEL-eee#inf,RANGEDEL]
+    (compacted L0 [000010] + L6 [000007 ...])
+    bbb-eee#19,RANGEDEL
+    ddd#16,SET [3333]
+
+find
+testdata/find-db
+eee
+----
+000004.log
+    bbb-eee#19,RANGEDEL
+
+find
+testdata/find-mixed
+hex:636363
+--value=null
+----
+000002.sst
+    test formatter: ccc#14,MERGE
+Unable to decode sstable find-mixed/000001.sst, pebble/table: invalid table 000001 (file size is too small)
+
+find
+testdata/find-db
+eee
+----
+000004.log
+    bbb-eee#19,RANGEDEL
+
+find
+testdata/find-val-sep-db
+crdb:aaa
+----
+000005.sst [aaa\x00#10,SET-ddd\x00#13,SET]
+    (flushed to L0)
+    aaa\x00#10,SET [(f0,blk0,id0,len5)]
+
+find
+testdata/find-val-sep-db
+crdb:eee
+----
+000008.sst [eee\x00#14,SET-fff\x00#15,SET]
+    (flushed to L0)
+    eee\x00#14,SET [(f0,blk0,id0,len6)]
+
+find
+testdata/find-val-sep-db
+crdb:ddd
+----
+000005.sst [aaa\x00#10,SET-ddd\x00#13,SET]
+    (flushed to L0)
+    ddd\x00#13,SET [36]
+
+find
+testdata/find-val-sep-db
+crdb:aaa
+--load-blobs
+----
+000005.sst [aaa\x00#10,SET-ddd\x00#13,SET]
+    (flushed to L0)
+    aaa\x00#10,SET [7975756d69]
+
+find
+testdata/find-val-sep-db
+crdb:ddd
+--load-blobs
+----
+000005.sst [aaa\x00#10,SET-ddd\x00#13,SET]
+    (flushed to L0)
+    ddd\x00#13,SET [36]
+
+find
+testdata/find-val-sep-db
+crdb:eee
+--load-blobs
+----
+000008.sst [eee\x00#14,SET-fff\x00#15,SET]
+    (flushed to L0)
+    eee\x00#14,SET [706967656f6e]

@@ -1,0 +1,128 @@
+define
+[ ]
+----
+
+iter
+first
+last
+seek-lt a
+seek-lt z
+seek-ge a
+seek-ge z
+----
+first: .
+last: .
+seek-lt a: .
+seek-lt z: .
+seek-ge a: .
+seek-ge z: .
+
+define
+[ a#1,SET-b#2,SET ]
+----
+
+iter
+last
+----
+last: 000001:[a#1,SET-b#2,SET]
+
+iter
+first
+next
+prev
+prev
+----
+first: 000001:[a#1,SET-b#2,SET]
+next: .
+prev: 000001:[a#1,SET-b#2,SET]
+prev: .
+
+iter
+seek-ge a
+seek-ge b
+seek-ge c
+----
+seek-ge a: 000001:[a#1,SET-b#2,SET]
+seek-ge b: 000001:[a#1,SET-b#2,SET]
+seek-ge c: .
+
+iter
+seek-lt a
+seek-lt b
+seek-lt z
+----
+seek-lt a: .
+seek-lt b: 000001:[a#1,SET-b#2,SET]
+seek-lt z: 000001:[a#1,SET-b#2,SET]
+
+define
+[ b#1,SET-c#2,SET ]
+----
+
+iter
+seek-ge a
+seek-ge d
+seek-lt a
+seek-lt z
+----
+seek-ge a: 000001:[b#1,SET-c#2,SET]
+seek-ge d: .
+seek-lt a: .
+seek-lt z: 000001:[b#1,SET-c#2,SET]
+
+
+define
+a#1,SET-b#2,SET [ c#3,SET-d#4,SET e#5,SET-f#6,SET ] g#7,SET-h#8,SET
+----
+
+iter
+first
+prev
+last
+next
+----
+first: 000002:[c#3,SET-d#4,SET]
+prev: .
+last: 000003:[e#5,SET-f#6,SET]
+next: .
+
+iter
+seek-ge a
+seek-ge b
+seek-ge c
+seek-ge h
+prev
+----
+seek-ge a: 000002:[c#3,SET-d#4,SET]
+seek-ge b: 000002:[c#3,SET-d#4,SET]
+seek-ge c: 000002:[c#3,SET-d#4,SET]
+seek-ge h: .
+prev: 000003:[e#5,SET-f#6,SET]
+
+iter
+seek-lt b
+next
+seek-lt a
+next
+seek-lt z
+----
+seek-lt b: .
+next: 000002:[c#3,SET-d#4,SET]
+seek-lt a: .
+next: 000002:[c#3,SET-d#4,SET]
+seek-lt z: 000003:[e#5,SET-f#6,SET]
+
+define
+a#1,SET-b#2,SET c#3,SET-d#4,SET e#5,SET-f#6,SET g#7,SET-h#8,SET [ ]
+----
+
+iter
+seek-ge cat
+seek-lt cat
+first
+last
+----
+seek-ge cat: .
+seek-lt cat: .
+first: .
+last: .

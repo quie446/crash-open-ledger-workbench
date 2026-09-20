@@ -1,0 +1,50 @@
+define
+a#1,SET:1
+a#2,SET:2
+b#1,SET:1
+b#2,SET:2
+c#1,SET:1
+c#2,SET:2
+d#2,SET:2
+----
+
+iter lower=b upper=c
+seek-ge d
+seek-prefix-ge d
+seek-lt c
+seek-lt b
+next
+prev
+next
+next
+next
+prev
+----
+.
+.
+b:1
+.
+b:2
+.
+b:2
+b:1
+.
+b:1
+
+# Test changing the bounds. The new bounds should be in effect.
+
+iter lower=b upper=c
+seek-ge d
+set-bounds lower=a upper=z
+seek-ge d
+----
+.
+d:2
+
+iter lower=b upper=c
+seek-lt b
+set-bounds lower=a upper=z
+seek-lt b
+----
+.
+a:1

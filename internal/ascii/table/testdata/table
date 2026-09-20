@@ -1,0 +1,147 @@
+cats-nodiv
+----
+name    age cuteness
+--------------------
+Chicken   5       10
+Heart     4       10
+Mai       2       10
+Poi      15       10
+Pigeon    2       10
+Sugar     8       10
+Yaya      5       10
+Yuumi     5       10
+
+cats-nodiv horizontal-dividers=(1,5)
+----
+name    age cuteness
+Chicken   5       10
+--------------------
+Heart     4       10
+Mai       2       10
+Poi      15       10
+Pigeon    2       10
+--------------------
+Sugar     8       10
+Yaya      5       10
+Yuumi     5       10
+
+cats-nodiv left
+----
+name    age cuteness
+--------------------
+Chicken 5   10
+Heart   4   10
+Mai     2   10
+Poi     15  10
+Pigeon  2   10
+Sugar   8   10
+Yaya    5   10
+Yuumi   5   10
+
+cats-nodiv center
+----
+name    age cuteness
+--------------------
+Chicken  5     10
+Heart    4     10
+Mai      2     10
+Poi     15     10
+Pigeon   2     10
+Sugar    8     10
+Yaya     5     10
+Yuumi    5     10
+
+cats-tuple-index
+----
+idx |    name
+----+--------
+0   | Chicken
+1   |   Heart
+2   |     Mai
+3   |     Poi
+4   |  Pigeon
+5   |   Sugar
+6   |    Yaya
+7   |   Yuumi
+
+cats-tuple-index horizontal-dividers=(0,1,2,3,-2,-1)
+----
+idx |    name
+----+--------
+0   | Chicken
+----+--------
+1   |   Heart
+----+--------
+2   |     Mai
+----+--------
+3   |     Poi
+4   |  Pigeon
+5   |   Sugar
+----+--------
+6   |    Yaya
+----+--------
+7   |   Yuumi
+
+cats-tuple-index odd horizontal-dividers=(1,-1)
+----
+idx |    name
+0   | Chicken
+----+--------
+3   |     Poi
+6   |    Yaya
+----+--------
+7   |   Yuumi
+
+cats-column-too-wide
+----
+name    |      age  c
+--------+------------
+Chicken |  5000000 10
+Heart   |  4000000 10
+Mai     |  2000000 10
+Poi     | 15000000 10
+Pigeon  |  2000000 10
+Sugar   |  8000000 10
+Yaya    |  5000000 10
+Yuumi   |  5000000 10
+
+cats-column-too-wide horizontal-dividers=(0,3,-3)
+----
+name    |      age  c
+--------+------------
+Chicken |  5000000 10
+Heart   |  4000000 10
+Mai     |  2000000 10
+--------+------------
+Poi     | 15000000 10
+Pigeon  |  2000000 10
+--------+------------
+Sugar   |  8000000 10
+Yaya    |  5000000 10
+Yuumi   |  5000000 10
+
+cats-column-too-wide left
+----
+name    | age      c
+--------+------------
+Chicken | 5000000  10
+Heart   | 4000000  10
+Mai     | 2000000  10
+Poi     | 15000000 10
+Pigeon  | 2000000  10
+Sugar   | 8000000  10
+Yaya    | 5000000  10
+Yuumi   | 5000000  10
+
+cats-column-too-wide center
+----
+name    |   age    c
+--------+------------
+Chicken | 5000000  10
+Heart   | 4000000  10
+Mai     | 2000000  10
+Poi     | 15000000 10
+Pigeon  | 2000000  10
+Sugar   | 8000000  10
+Yaya    | 5000000  10
+Yuumi   | 5000000  10

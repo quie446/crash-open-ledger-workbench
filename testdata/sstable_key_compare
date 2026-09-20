@@ -1,0 +1,96 @@
+cmp
+a#4,SET a#4,SET
+a#4,SET b#4,SET
+a#4,SET a#3,SET
+a#3,SET a#4,SET
+cat#3,SET cat#4,MERGE
+dog#3,SET cat#4,MERGE
+----
+                               a#4,SET = a#4,SET
+                               a#4,SET < b#4,SET
+                               a#4,SET = a#3,SET
+                               a#3,SET = a#4,SET
+                             cat#3,SET = cat#4,MERGE
+                             dog#3,SET > cat#4,MERGE
+
+cmp
+a#4,SET a#inf,RANGEDEL
+a#inf,RANGEDEL a#4,SET
+cat#4,SET a#inf,RANGEDEL
+a#4,SET cat#inf,RANGEDEL
+cat#2,RANGEDEL cat#3,SET
+cat#2,RANGEDEL cat#3,RANGEDEL
+cat#2,RANGEDEL cat#inf,RANGEDEL
+----
+                               a#4,SET > a#inf,RANGEDEL
+                        a#inf,RANGEDEL < a#4,SET
+                             cat#4,SET > a#inf,RANGEDEL
+                               a#4,SET < cat#inf,RANGEDEL
+                        cat#2,RANGEDEL = cat#3,SET
+                        cat#2,RANGEDEL = cat#3,RANGEDEL
+                        cat#2,RANGEDEL > cat#inf,RANGEDEL
+
+cmp
+a#5,RANGEKEYSET a#3,SET
+a#5,RANGEKEYSET a#3,RANGEDEL
+a#5,RANGEKEYSET a#inf,RANGEDEL
+a#inf,RANGEKEYSET a#inf,RANGEDEL
+a#inf,RANGEKEYSET a#5,RANGEKEYSET
+a#5,RANGEKEYSET a#inf,RANGEKEYSET
+----
+                       a#5,RANGEKEYSET = a#3,SET
+                       a#5,RANGEKEYSET = a#3,RANGEDEL
+                       a#5,RANGEKEYSET > a#inf,RANGEDEL
+                     a#inf,RANGEKEYSET = a#inf,RANGEDEL
+                     a#inf,RANGEKEYSET < a#5,RANGEKEYSET
+                       a#5,RANGEKEYSET > a#inf,RANGEKEYSET
+
+cmp
+a#5,RANGEKEYUNSET a#inf,RANGEKEYUNSET
+a#inf,RANGEKEYUNSET a#5,RANGEKEYUNSET
+foo#inf,RANGEKEYUNSET a#5,RANGEKEYUNSET
+a#5,SET a#inf,RANGEKEYUNSET
+a#inf,RANGEKEYUNSET a#5,SET
+a#inf,RANGEKEYUNSET a#inf,RANGEDEL
+a#inf,RANGEDEL a#inf,RANGEKEYUNSET
+a#inf,RANGEKEYUNSET a#inf,RANGEKEYSET
+a#inf,RANGEKEYSET a#inf,RANGEKEYUNSET
+----
+                     a#5,RANGEKEYUNSET > a#inf,RANGEKEYUNSET
+                   a#inf,RANGEKEYUNSET < a#5,RANGEKEYUNSET
+                 foo#inf,RANGEKEYUNSET > a#5,RANGEKEYUNSET
+                               a#5,SET > a#inf,RANGEKEYUNSET
+                   a#inf,RANGEKEYUNSET < a#5,SET
+                   a#inf,RANGEKEYUNSET = a#inf,RANGEDEL
+                        a#inf,RANGEDEL = a#inf,RANGEKEYUNSET
+                   a#inf,RANGEKEYUNSET = a#inf,RANGEKEYSET
+                     a#inf,RANGEKEYSET = a#inf,RANGEKEYUNSET
+
+cmp
+a#5,RANGEKEYDEL a#inf,RANGEKEYDEL
+a#inf,RANGEKEYDEL a#5,RANGEKEYDEL
+foo#inf,RANGEKEYDEL a#5,RANGEKEYDEL
+a#5,SET a#inf,RANGEKEYDEL
+a#inf,RANGEKEYDEL a#5,SET
+a#inf,RANGEKEYDEL a#inf,RANGEDEL
+a#inf,RANGEDEL a#inf,RANGEKEYDEL
+a#inf,RANGEKEYDEL a#inf,RANGEKEYSET
+a#inf,RANGEKEYSET a#inf,RANGEKEYDEL
+a#inf,RANGEKEYUNSET a#inf,RANGEKEYDEL
+a#inf,RANGEKEYDEL a#inf,RANGEKEYUNSET
+a#inf,RANGEKEYDEL a#inf,RANGEKEYSET
+a#inf,RANGEKEYSET a#inf,RANGEKEYDEL
+----
+                       a#5,RANGEKEYDEL > a#inf,RANGEKEYDEL
+                     a#inf,RANGEKEYDEL < a#5,RANGEKEYDEL
+                   foo#inf,RANGEKEYDEL > a#5,RANGEKEYDEL
+                               a#5,SET > a#inf,RANGEKEYDEL
+                     a#inf,RANGEKEYDEL < a#5,SET
+                     a#inf,RANGEKEYDEL = a#inf,RANGEDEL
+                        a#inf,RANGEDEL = a#inf,RANGEKEYDEL
+                     a#inf,RANGEKEYDEL = a#inf,RANGEKEYSET
+                     a#inf,RANGEKEYSET = a#inf,RANGEKEYDEL
+                   a#inf,RANGEKEYUNSET = a#inf,RANGEKEYDEL
+                     a#inf,RANGEKEYDEL = a#inf,RANGEKEYUNSET
+                     a#inf,RANGEKEYDEL = a#inf,RANGEKEYSET
+                     a#inf,RANGEKEYSET = a#inf,RANGEKEYDEL

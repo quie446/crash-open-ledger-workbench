@@ -1,0 +1,353 @@
+# Ensure that a range deletion in a higher level results in a compensated level
+# size and a higher level score as a result.
+
+define lbase-max-bytes=65536 enable-table-stats=false
+L5
+  a#2,RANGEDEL:f
+L6
+  a#1,SET:<rand-bytes=65536>
+  b#1,SET:<rand-bytes=65536>
+  c#1,SET:<rand-bytes=65536>
+  d#1,SET:<rand-bytes=65536>
+  e#1,SET:<rand-bytes=65536>
+----
+L5:
+  000004:[a#2,RANGEDEL-f#inf,RANGEDEL]
+L6:
+  000005:[a#1,SET-e#1,SET]
+
+scores
+----
+Level    Size     Score    Fill factor    Compensated fill factor
+L0       0B       0.00     0.00           0.00
+L1       0B       0.00     0.00           0.00
+L2       0B       0.00     0.00           0.00
+L3       0B       0.00     0.00           0.00
+L4       0B       0.00     0.00           0.00
+L5       676B     0.00     0.01           0.01
+L6       321KB    1.11     1.11           1.11
+
+enable-table-stats
+----
+
+wait-pending-table-stats
+000004
+----
+num-entries: 1
+num-deletions: 1
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 0
+range-deletions-bytes-estimate: 328823
+compression: None:79
+
+scores
+----
+Level    Size     Score    Fill factor    Compensated fill factor
+L0       0B       0.00     0.00           0.00
+L1       0B       0.00     0.00           0.00
+L2       0B       0.00     0.00           0.00
+L3       0B       0.00     0.00           0.00
+L4       0B       0.00     0.00           0.00
+L5       676B     0.01     0.01           5.03
+L6       321KB    1.11     1.11           1.11
+
+# Ensure that point deletions in a higher level result in a compensated level
+# size and higher level scores as a result.
+
+define lbase-max-bytes=65536  enable-table-stats=false
+L5
+  a#2,DEL:
+  b#2,DEL:
+  c#2,DEL:
+  d#2,DEL:
+  e#2,DEL:
+L6
+  a#1,SET:<rand-bytes=65536>
+  b#1,SET:<rand-bytes=65536>
+  c#1,SET:<rand-bytes=65536>
+  d#1,SET:<rand-bytes=65536>
+  e#1,SET:<rand-bytes=65536>
+----
+L5:
+  000004:[a#2,DEL-e#2,DEL]
+L6:
+  000005:[a#1,SET-e#1,SET]
+
+scores
+----
+Level    Size     Score    Fill factor    Compensated fill factor
+L0       0B       0.00     0.00           0.00
+L1       0B       0.00     0.00           0.00
+L2       0B       0.00     0.00           0.00
+L3       0B       0.00     0.00           0.00
+L4       0B       0.00     0.00           0.00
+L5       742B     0.00     0.01           0.01
+L6       321KB    1.11     1.11           1.11
+
+enable-table-stats
+----
+
+wait-pending-table-stats
+000004
+----
+num-entries: 5
+num-deletions: 5
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 327690
+range-deletions-bytes-estimate: 0
+compression: None:128
+
+scores
+----
+Level    Size     Score    Fill factor    Compensated fill factor
+L0       0B       0.00     0.00           0.00
+L1       0B       0.00     0.00           0.00
+L2       0B       0.00     0.00           0.00
+L3       0B       0.00     0.00           0.00
+L4       0B       0.00     0.00           0.00
+L5       742B     0.01     0.01           5.01
+L6       321KB    1.11     1.11           1.11
+
+# Run a similar test as above, but this time the table containing the DELs is
+# ingested after the database is initialized. When the ingested sstable's stats
+# are loaded and automatic compactions are re-enabled, it should trigger an
+# automatic compaction of the ingested sstable on account of the high
+# point-deletions-bytes-estimate value.
+#
+# This a regression test for an issue where the table stats collector wouldn't
+# attempt to schedule a compaction if a file only had compensation due to point
+# deletions and not range deletions.
+
+define lbase-max-bytes=65536  enable-table-stats=true auto-compactions=off
+L6
+  a#1,SET:<rand-bytes=65536>
+  b#1,SET:<rand-bytes=65536>
+  c#1,SET:<rand-bytes=65536>
+  d#1,SET:<rand-bytes=65536>
+  e#1,SET:<rand-bytes=65536>
+----
+L6:
+  000004:[a#1,SET-e#1,SET]
+
+ingest ext1
+del a:
+del b:
+del c:
+del d:
+del e:
+----
+L5:
+  000005:[a:#10,DEL-e:#10,DEL]
+L6:
+  000004:[a#1,SET-e#1,SET]
+
+wait-pending-table-stats
+000005
+----
+num-entries: 5
+num-deletions: 5
+num-range-key-sets: 0
+point-deletions-bytes-estimate: 327700
+range-deletions-bytes-estimate: 0
+compression: None:129
+
+maybe-compact
+----
+1 compactions in progress:
+5: 000005:a:#10,DEL-e:#10,DEL
+6: 000004:a#1,SET-e#1,SET
+
+scores
+----
+Level    Size     Score    Fill factor    Compensated fill factor
+L0       0B       0.00     0.00           0.00
+L1       0B       0.00     0.00           0.00
+L2       0B       0.00     0.00           0.00
+L3       0B       0.00     0.00           0.00
+L4       0B       0.00     0.00           0.00
+L5       0B       0.00     0.00           0.00
+L6       321KB    1.11     1.11           1.11
+
+lsm
+----
+L6:
+  000006:[a#0,SET-e#0,SET]
+Blob files:
+  B000007 physical:{000007 size:[328011 (320KB)] vals:[327680 (320KB)]}
+
+# Test the adjustment of level sizes to accommodate in-progress compactions. A
+# compaction may be "inProgress" if it's already been applied, but is still
+# deleting obsolete files. These compactions' effects have already been applied
+# to the LSM, so size adjustment should ignore them and not doubly adjust sizes.
+
+define lbase-max-bytes=65536  enable-table-stats=false auto-compactions=on pause-cleaning
+L5
+  aa#2,SET:<rand-bytes=131072>
+  bb#2,SET:<rand-bytes=131072>
+  cc#2,SET:<rand-bytes=131072>
+  dd#2,SET:<rand-bytes=131072>
+L5
+  e#2,SET:<rand-bytes=131072>
+L6
+  a#1,SET:<rand-bytes=65536>
+  b#1,SET:<rand-bytes=65536>
+  c#1,SET:<rand-bytes=65536>
+  d#1,SET:<rand-bytes=65536>
+L6
+  e#1,SET:<rand-bytes=131072>
+----
+L5:
+  000004:[aa#2,SET-dd#2,SET]
+  000005:[e#2,SET-e#2,SET]
+L6:
+  000006:[a#1,SET-d#1,SET]
+  000007:[e#1,SET-e#1,SET]
+
+scores
+----
+Level    Size     Score    Fill factor    Compensated fill factor
+L0       0B       0.00     0.00           0.00
+L1       0B       0.00     0.00           0.00
+L2       0B       0.00     0.00           0.00
+L3       0B       0.00     0.00           0.00
+L4       0B       0.00     0.00           0.00
+L5       642KB    6.32     2.64           2.64
+L6       386KB    0.00     0.42           0.42
+
+lsm verbose
+----
+L5:
+  000004:[aa#2,SET-dd#2,SET] seqnums:[#2-#2] points:[aa#2,SET-dd#2,SET] size:525331
+  000005:[e#2,SET-e#2,SET] seqnums:[#2-#2] points:[e#2,SET-e#2,SET] size:131786
+L6:
+  000006:[a#1,SET-d#1,SET] seqnums:[#1-#1] points:[a#1,SET-d#1,SET] size:263183
+  000007:[e#1,SET-e#1,SET] seqnums:[#1-#1] points:[e#1,SET-e#1,SET] size:131786
+
+# Attempting to schedule a compaction should begin a L5->L6 compaction.
+
+maybe-compact
+----
+1 compactions in progress:
+5: 000004:aa#2,SET-dd#2,SET
+6: 000006:a#1,SET-d#1,SET
+
+# The scores and sizes should be stable between when the version edit has been
+# applied but the compaction has not completed, and when the compaction is
+# finally complete.
+
+scores wait-for-compaction=version-edit
+----
+Level    Size     Score    Fill factor    Compensated fill factor
+L0       0B       0.00     0.00           0.00
+L1       0B       0.00     0.00           0.00
+L2       0B       0.00     0.00           0.00
+L3       0B       0.00     0.00           0.00
+L4       0B       0.00     0.00           0.00
+L5       129KB    0.00     0.53           0.53
+L6       898KB    0.00     0.97           0.97
+
+lsm
+----
+L5:
+  000005:[e#2,SET-e#2,SET]
+L6:
+  000008:[a#0,SET-dd#0,SET]
+  000007:[e#1,SET-e#1,SET]
+Blob files:
+  B000009 physical:{000009 size:[786865 (768KB)] vals:[786432 (768KB)]}
+
+resume-cleaning
+----
+
+scores wait-for-compaction=completion
+----
+Level    Size     Score    Fill factor    Compensated fill factor
+L0       0B       0.00     0.00           0.00
+L1       0B       0.00     0.00           0.00
+L2       0B       0.00     0.00           0.00
+L3       0B       0.00     0.00           0.00
+L4       0B       0.00     0.00           0.00
+L5       129KB    0.00     0.53           0.53
+L6       898KB    0.00     0.97           0.97
+
+# Test high priority blob file rewrite space reclamation compactions.  We set
+# l0-compaction-threshold=1 to ensure that post-flush, L0 has a score ≥ 1.0.  If
+# it weren't for the high priority blob file rewrite compaction heuristic
+# triggering, we would pursue an automatic score compaction from L0 -> LBase.
+
+define l0-compaction-threshold=1 lbase-max-bytes=65536  enable-table-stats=true auto-compactions=off value-separation=(enabled, min-size=1, max-ref-depth=5, garbage-ratios=0.1:0.2)
+----
+
+batch
+set a apple
+set b banana
+set c coconut
+set d dragonfruit
+----
+
+flush
+----
+L0.0:
+  000005:[a#10,SET-d#13,SET]
+Blob files:
+  B000006 physical:{000006 size:[206 (206B)] vals:[29 (29B)]}
+
+batch
+del b
+del d
+----
+
+flush
+----
+L0.1:
+  000008:[b#14,DEL-d#15,DEL]
+L0.0:
+  000005:[a#10,SET-d#13,SET]
+Blob files:
+  B000006 physical:{000006 size:[206 (206B)] vals:[29 (29B)]}
+
+maybe-compact
+----
+1 compactions in progress:
+0: 000005:a#10,SET-d#13,SET 000008:b#14,DEL-d#15,DEL
+6:
+
+batch
+set e elderberry
+set f fraise
+set g grapefruit
+set h huckleberry
+----
+
+wait-compactions
+----
+
+flush
+----
+L0.0:
+  000011:[e#16,SET-h#19,SET]
+L6:
+  000009:[a#0,SET-c#0,SET]
+Blob files:
+  B000006 physical:{000006 size:[206 (206B)] vals:[29 (29B)]}
+  B000012 physical:{000012 size:[214 (214B)] vals:[37 (37B)]}
+
+scores wait-for-compaction=completion
+----
+Level    Size     Score     Fill factor    Compensated fill factor
+L0       1020B    151.18    2.00           2.00
+L1       0B       0.00      0.00           0.00
+L2       0B       0.00      0.00           0.00
+L3       0B       0.00      0.00           0.00
+L4       0B       0.00      0.00           0.00
+L5       0B       0.00      0.00           0.00
+L6       867B     0.00      0.01           0.01
+
+# This attempt to compact should chose to rewrite the blob file B000006 *AND*
+# compact out of L0.
+
+maybe-compact
+----
+1 burst concurrency active
+1 compactions in progress:
+blob file (ID: B000006) 000006 (206B) being rewritten (high priority)
