@@ -31,6 +31,10 @@ test:
 testcoverage:
 	${GO} test -tags '$(TAGS)' ${testflags} -run ${TESTS} ${PKG} -coverprofile ${COVER_PROFILE}
 
+.PHONY: crash-replay-gate
+crash-replay-gate:
+	bash scripts/crash_replay_gate.sh
+
 .PHONY: testrace
 testrace: testflags += -race -timeout 20m
 testrace: test
